@@ -24,7 +24,7 @@ export const verifyToken = (req, res, next) => {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
-        message: 'Token has expired. Please login again.'
+        message: 'Access token has expired. Use refresh token to get a new access token.'
       });
     }
 

@@ -31,7 +31,7 @@ A production-ready backend for a College ERP System built with Node.js, Express.
    - Copy `.env.example` to `.env`
    - Update the following values:
      ```env
-     MONGODB_URI=mongodb://localhost:27017/college-erp
+     MONGO_URI=mongodb://localhost:27017/college-erp
      PORT=5000
      JWT_SECRET=your_secret_key_change_this_in_production
      JWT_EXPIRE=7d
@@ -167,17 +167,17 @@ The server will start on `http://localhost:5000`
 
 ```
 backend/
-├── server.js              # Express server setup and MongoDB connection
+├── src/server.js              # Express server setup and MongoDB connection
 ├── package.json           # Project dependencies
 ├── .env.example           # Environment variables template
 ├── README.md              # Project documentation
-├── models/
+├── src/models/
 │   └── User.js           # User schema and model
-├── controllers/
+├── src/controllers/
 │   └── authController.js # Authentication business logic
-├── routes/
+├── src/routes/
 │   └── authRoutes.js     # Authentication routes
-└── middleware/
+└── src/middleware/
     └── authMiddleware.js # JWT verification and role checking
 ```
 
@@ -233,3 +233,4 @@ Status codes:
 ## License
 
 MIT
+
