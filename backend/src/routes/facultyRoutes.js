@@ -7,22 +7,17 @@ import {
   deleteFaculty
 } from '../controllers/facultyController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-// Get all faculty members
-router.get('/', getAllFaculty);
+// ─── Read (all authenticated users) ────────────────────
+router.get('/',    verifyToken, checkRole(ACCESS.FACULTY.READ),   getAllFaculty);
+router.get('/:id', verifyToken, checkRole(ACCESS.FACULTY.READ),   getFacultyById);
 
-// Get faculty by ID
-router.get('/:id', getFacultyById);
-
-// Create new faculty
-router.post('/', verifyToken, checkRole(['admin']), createFaculty);
-
-// Update faculty
-router.put('/:id', verifyToken, checkRole(['admin', 'faculty']), updateFaculty);
-
-// Delete faculty
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteFaculty);
+// ─── Write (management / staff) ────────────────────────
+router.post('/',      verifyToken, checkRole(ACCESS.FACULTY.CREATE), createFaculty);
+router.put('/:id',    verifyToken, checkRole(ACCESS.FACULTY.UPDATE), updateFaculty);
+router.delete('/:id', verifyToken, checkRole(ACCESS.FACULTY.DELETE), deleteFaculty);
 
 export default router;

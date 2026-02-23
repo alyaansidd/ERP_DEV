@@ -7,30 +7,17 @@ import {
   deleteCourse
 } from '../controllers/courseController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-/**
- * Public routes (for viewing)
- */
+// ─── Read (all authenticated users) ────────────────────
+router.get('/',    verifyToken, checkRole(ACCESS.COURSE.READ),   getAllCourses);
+router.get('/:id', verifyToken, checkRole(ACCESS.COURSE.READ),   getCourseById);
 
-// Get all courses
-router.get('/', getAllCourses);
-
-// Get course by ID
-router.get('/:id', getCourseById);
-
-/**
- * Protected routes (require authentication)
- */
-
-// Create new course
-router.post('/', verifyToken, checkRole(['admin', 'faculty']), createCourse);
-
-// Update course
-router.put('/:id', verifyToken, checkRole(['admin', 'faculty']), updateCourse);
-
-// Delete course
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteCourse);
+// ─── Write (management) ────────────────────────────────
+router.post('/',      verifyToken, checkRole(ACCESS.COURSE.CREATE), createCourse);
+router.put('/:id',    verifyToken, checkRole(ACCESS.COURSE.UPDATE), updateCourse);
+router.delete('/:id', verifyToken, checkRole(ACCESS.COURSE.DELETE), deleteCourse);
 
 export default router;

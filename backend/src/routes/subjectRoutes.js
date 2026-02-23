@@ -7,30 +7,17 @@ import {
   deleteSubject
 } from '../controllers/subjectController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-/**
- * Public routes (for viewing)
- */
+// ─── Read (all authenticated users) ────────────────────
+router.get('/',    verifyToken, checkRole(ACCESS.SUBJECT.READ),   getAllSubjects);
+router.get('/:id', verifyToken, checkRole(ACCESS.SUBJECT.READ),   getSubjectById);
 
-// Get all subjects
-router.get('/', getAllSubjects);
-
-// Get subject by ID
-router.get('/:id', getSubjectById);
-
-/**
- * Protected routes (require authentication)
- */
-
-// Create new subject
-router.post('/', verifyToken, checkRole(['admin', 'faculty']), createSubject);
-
-// Update subject
-router.put('/:id', verifyToken, checkRole(['admin', 'faculty']), updateSubject);
-
-// Delete subject
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteSubject);
+// ─── Write (management) ────────────────────────────────
+router.post('/',      verifyToken, checkRole(ACCESS.SUBJECT.CREATE), createSubject);
+router.put('/:id',    verifyToken, checkRole(ACCESS.SUBJECT.UPDATE), updateSubject);
+router.delete('/:id', verifyToken, checkRole(ACCESS.SUBJECT.DELETE), deleteSubject);
 
 export default router;

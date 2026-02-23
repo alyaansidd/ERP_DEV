@@ -2,12 +2,46 @@ import mongoose from 'mongoose';
 
 const studentSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    rollNo: { type: String, required: true, unique: true },
-    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
-    class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
-    semester: Number,
-    admissionYear: Number
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      unique: true
+    },
+
+    rollNo: {
+      type: String,
+      required: true,
+      unique: true
+    },
+
+    classId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+      required: true
+    },
+
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department',
+      required: true
+    },
+
+    program: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    fatherName: {
+      type: String,
+      required: true
+    },
+
+    fatherNo: {
+      type: String,
+      match: [/^[0-9]{10}$/, 'Invalid phone number']
+    }
   },
   { timestamps: true }
 );

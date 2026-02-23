@@ -7,7 +7,7 @@ import Course from '../models/Course.js';
 export const getAllCourses = async (req, res) => {
   try {
     const courses = await Course.find()
-      .populate('department', 'name code');
+      .populate('department', 'name');
     
     return res.status(200).json({
       success: true,
@@ -30,7 +30,7 @@ export const getAllCourses = async (req, res) => {
 export const getCourseById = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id)
-      .populate('department', 'name code');
+      .populate('department', 'name');
     
     if (!course) {
       return res.status(404).json({
@@ -76,7 +76,7 @@ export const createCourse = async (req, res) => {
     });
 
     const populatedCourse = await Course.findById(course._id)
-      .populate('department', 'name code');
+      .populate('department', 'name');
 
     return res.status(201).json({
       success: true,
@@ -108,7 +108,7 @@ export const updateCourse = async (req, res) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('department', 'name code');
+    ).populate('department', 'name');
 
     if (!course) {
       return res.status(404).json({

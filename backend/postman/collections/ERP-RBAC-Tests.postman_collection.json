@@ -1,0 +1,572 @@
+{
+  "info": {
+    "name": "ERP RBAC Tests",
+    "description": "Full Role-Based Access Control test suite.\n\nRoles: admin, faculty, student\n\nRun order:\n1. Setup > Login Admin\n2. Setup > Register Faculty / Student\n3. Setup > Login Faculty / Student\n4. Run any test folder",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 — Setup",
+      "description": "Run these first, top-to-bottom, to create users and collect tokens.",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "  pm.environment.set('admin_token', res.accessToken);",
+                  "  pm.test('Admin token saved', () => pm.expect(res.success).to.be.true);",
+                  "} else {",
+                  "  pm.test('Login failed — seed admin first', () => pm.expect.fail(res.message));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Register Faculty (admin only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Faculty created', () => pm.expect(res.user.role).to.eql('faculty'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Faculty User\",\n  \"email\": \"{{faculty_email}}\",\n  \"password\": \"{{faculty_password}}\",\n  \"role\": \"faculty\",\n  \"phoneNo\": \"8888888888\",\n  \"aadharNo\": \"888888888888\",\n  \"dob\": \"1985-06-15\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api","auth","register"] }
+          }
+        },
+        {
+          "name": "Register Student (admin only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Student created', () => pm.expect(res.user.role).to.eql('student'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Student User\",\n  \"email\": \"{{student_email}}\",\n  \"password\": \"{{student_password}}\",\n  \"role\": \"student\",\n  \"phoneNo\": \"7777777777\",\n  \"aadharNo\": \"777777777777\",\n  \"dob\": \"2000-03-20\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api","auth","register"] }
+          }
+        },
+        {
+          "name": "Login Faculty",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.environment.set('faculty_token', res.accessToken);",
+                  "pm.test('Faculty token saved', () => pm.expect(res.success).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{faculty_email}}\",\n  \"password\": \"{{faculty_password}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Login Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.environment.set('student_token', res.accessToken);",
+                  "pm.test('Student token saved', () => pm.expect(res.success).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{student_email}}\",\n  \"password\": \"{{student_password}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Auth RBAC",
+      "item": [
+        {
+          "name": "Register — student token → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));",
+            "pm.test('Has requiredRoles', () => pm.expect(pm.response.json().requiredRoles).to.include('admin'));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test\",\n  \"email\": \"test@test.com\",\n  \"password\": \"Test@123\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api","auth","register"] }
+          }
+        },
+        {
+          "name": "Register — faculty token → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{faculty_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test\",\n  \"email\": \"test2@test.com\",\n  \"password\": \"Test@123\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api","auth","register"] }
+          }
+        },
+        {
+          "name": "Register — no token → 401",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 401', () => pm.response.to.have.status(401));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test\",\n  \"email\": \"test4@test.com\",\n  \"password\": \"Test@123\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api","auth","register"] }
+          }
+        },
+        {
+          "name": "Get Profile — any token → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api","auth","me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Departments RBAC",
+      "item": [
+        {
+          "name": "GET all — no token → 401",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 401', () => pm.response.to.have.status(401));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/departments", "host": ["{{base_url}}"], "path": ["api","departments"] }
+          }
+        },
+        {
+          "name": "GET all — student → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/api/departments", "host": ["{{base_url}}"], "path": ["api","departments"] }
+          }
+        },
+        {
+          "name": "CREATE — admin → 201",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const res = pm.response.json();",
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "if (res.data && res.data._id) pm.environment.set('dept_id', res.data._id);",
+            "if (res.department && res.department._id) pm.environment.set('dept_id', res.department._id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Computer Science\",\n  \"code\": \"CS\",\n  \"description\": \"Computer Science Department\"\n}" },
+            "url": { "raw": "{{base_url}}/api/departments", "host": ["{{base_url}}"], "path": ["api","departments"] }
+          }
+        },
+        {
+          "name": "CREATE — faculty → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{faculty_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Physics\",\n  \"code\": \"PHY\"\n}" },
+            "url": { "raw": "{{base_url}}/api/departments", "host": ["{{base_url}}"], "path": ["api","departments"] }
+          }
+        },
+        {
+          "name": "CREATE — student → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Math\",\n  \"code\": \"MATH\"\n}" },
+            "url": { "raw": "{{base_url}}/api/departments", "host": ["{{base_url}}"], "path": ["api","departments"] }
+          }
+        },
+        {
+          "name": "UPDATE — admin → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Computer Science & Engineering\"\n}" },
+            "url": { "raw": "{{base_url}}/api/departments/{{dept_id}}", "host": ["{{base_url}}"], "path": ["api","departments","{{dept_id}}"] }
+          }
+        },
+        {
+          "name": "UPDATE — faculty → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{faculty_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Name\"\n}" },
+            "url": { "raw": "{{base_url}}/api/departments/{{dept_id}}", "host": ["{{base_url}}"], "path": ["api","departments","{{dept_id}}"] }
+          }
+        },
+        {
+          "name": "DELETE — student → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/api/departments/{{dept_id}}", "host": ["{{base_url}}"], "path": ["api","departments","{{dept_id}}"] }
+          }
+        },
+        {
+          "name": "DELETE — admin → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": { "raw": "{{base_url}}/api/departments/{{dept_id}}", "host": ["{{base_url}}"], "path": ["api","departments","{{dept_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — Attendance RBAC",
+      "item": [
+        {
+          "name": "GET all — student → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/api/attendance", "host": ["{{base_url}}"], "path": ["api","attendance"] }
+          }
+        },
+        {
+          "name": "CREATE — faculty → 201",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 2xx', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{faculty_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"student\": \"000000000000000000000001\",\n  \"subject\": \"000000000000000000000001\",\n  \"date\": \"2026-02-20\",\n  \"status\": \"present\"\n}" },
+            "url": { "raw": "{{base_url}}/api/attendance", "host": ["{{base_url}}"], "path": ["api","attendance"] }
+          }
+        },
+        {
+          "name": "CREATE — student → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"student\": \"000000000000000000000001\",\n  \"subject\": \"000000000000000000000001\",\n  \"date\": \"2026-02-20\",\n  \"status\": \"present\"\n}" },
+            "url": { "raw": "{{base_url}}/api/attendance", "host": ["{{base_url}}"], "path": ["api","attendance"] }
+          }
+        },
+        {
+          "name": "DELETE — faculty → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));",
+            "pm.test('Response has requiredRoles', () => {",
+            "  const res = pm.response.json();",
+            "  pm.expect(res.requiredRoles).to.be.an('array');",
+            "});"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{faculty_token}}" }],
+            "url": { "raw": "{{base_url}}/api/attendance/000000000000000000000001", "host": ["{{base_url}}"], "path": ["api","attendance","000000000000000000000001"] }
+          }
+        },
+        {
+          "name": "DELETE — admin → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Admin can delete', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": { "raw": "{{base_url}}/api/attendance/000000000000000000000001", "host": ["{{base_url}}"], "path": ["api","attendance","000000000000000000000001"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 — Notices RBAC",
+      "item": [
+        {
+          "name": "GET all — student → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/api/notices", "host": ["{{base_url}}"], "path": ["api","notices"] }
+          }
+        },
+        {
+          "name": "CREATE — faculty → 201",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const res = pm.response.json();",
+            "pm.test('Status 2xx', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+            "if (res.data && res.data._id) pm.environment.set('notice_id', res.data._id);",
+            "if (res.notice && res.notice._id) pm.environment.set('notice_id', res.notice._id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{faculty_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Exam Schedule\",\n  \"content\": \"Mid-term exams start March 1st\",\n  \"category\": \"academic\"\n}" },
+            "url": { "raw": "{{base_url}}/api/notices", "host": ["{{base_url}}"], "path": ["api","notices"] }
+          }
+        },
+        {
+          "name": "CREATE — student → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Test\",\n  \"content\": \"Should fail\"\n}" },
+            "url": { "raw": "{{base_url}}/api/notices", "host": ["{{base_url}}"], "path": ["api","notices"] }
+          }
+        },
+        {
+          "name": "DELETE — faculty → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{faculty_token}}" }],
+            "url": { "raw": "{{base_url}}/api/notices/{{notice_id}}", "host": ["{{base_url}}"], "path": ["api","notices","{{notice_id}}"] }
+          }
+        },
+        {
+          "name": "DELETE — admin → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Admin can delete', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": { "raw": "{{base_url}}/api/notices/{{notice_id}}", "host": ["{{base_url}}"], "path": ["api","notices","{{notice_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 — Courses RBAC",
+      "item": [
+        {
+          "name": "CREATE — admin → 201",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const res = pm.response.json();",
+            "pm.test('Status 2xx', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+            "if (res.data && res.data._id) pm.environment.set('course_id', res.data._id);",
+            "if (res.course && res.course._id) pm.environment.set('course_id', res.course._id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"B.Tech Computer Science\",\n  \"code\": \"BTCS\",\n  \"duration\": 4\n}" },
+            "url": { "raw": "{{base_url}}/api/courses", "host": ["{{base_url}}"], "path": ["api","courses"] }
+          }
+        },
+        {
+          "name": "CREATE — faculty → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{faculty_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test Course\",\n  \"code\": \"TC01\",\n  \"duration\": 4\n}" },
+            "url": { "raw": "{{base_url}}/api/courses", "host": ["{{base_url}}"], "path": ["api","courses"] }
+          }
+        },
+        {
+          "name": "CREATE — student → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"M.Tech CS\",\n  \"code\": \"MTCS\",\n  \"duration\": 2\n}" },
+            "url": { "raw": "{{base_url}}/api/courses", "host": ["{{base_url}}"], "path": ["api","courses"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6 — Academic Years RBAC",
+      "item": [
+        {
+          "name": "CREATE — admin → 201",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 2xx', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"year\": \"2025-2026\",\n  \"startDate\": \"2025-07-01\",\n  \"endDate\": \"2026-06-30\"\n}" },
+            "url": { "raw": "{{base_url}}/api/academic-years", "host": ["{{base_url}}"], "path": ["api","academic-years"] }
+          }
+        },
+        {
+          "name": "CREATE — faculty → 403",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 403', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{faculty_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"year\": \"2026-2027\",\n  \"startDate\": \"2026-07-01\",\n  \"endDate\": \"2027-06-30\"\n}" },
+            "url": { "raw": "{{base_url}}/api/academic-years", "host": ["{{base_url}}"], "path": ["api","academic-years"] }
+          }
+        },
+        {
+          "name": "GET all — student → 200",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Should be 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/api/academic-years", "host": ["{{base_url}}"], "path": ["api","academic-years"] }
+          }
+        }
+      ]
+    }
+  ]
+}

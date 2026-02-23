@@ -1,5 +1,14 @@
 import Class from '../models/Class.js';
 import Department from '../models/Department.js';
+import Faculty from '../models/Faculty.js';
+import Student from '../models/Student.js';
+
+/** Consistent populate for Class queries */
+const populateClass = (query) =>
+  query
+    .populate('departmentId', 'name')
+    .populate('coordinatorId', 'userId employeeNo designation')
+    .populate('studentIds', 'rollNo userId');
 
 /**
  * Get all classes
@@ -7,10 +16,8 @@ import Department from '../models/Department.js';
  */
 export const getAllClasses = async (req, res) => {
   try {
-    const classes = await Class.find()
-      .populate('department', 'name code')
-      .populate('academicYear', 'year');
-    
+    const classes = await populateClass(Class.find());
+
     return res.status(200).json({
       success: true,
       count: classes.length,
@@ -31,17 +38,15 @@ export const getAllClasses = async (req, res) => {
  */
 export const getClassById = async (req, res) => {
   try {
-    const classDoc = await Class.findById(req.params.id)
-      .populate('department', 'name code')
-      .populate('academicYear', 'year');
-    
+    const classDoc = await populateClass(Class.findById(req.params.id));
+
     if (!classDoc) {
       return res.status(404).json({
         success: false,
         message: 'Class not found'
       });
     }
-    
+
     return res.status(200).json({
       success: true,
       data: classDoc
@@ -61,44 +66,70 @@ export const getClassById = async (req, res) => {
  */
 export const createClass = async (req, res) => {
   try {
-    const { name, department, semester, academicYear } = req.body;
+    const { name, departmentId, coordinatorId, roomNo, studentIds, timeTable } = req.body;
 
-    if (!name) {
+    if (!name || !departmentId) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide class name'
+        message: 'Please provide name and departmentId'
       });
     }
 
-    // Validate department if provided
-    if (department) {
-      const dept = await Department.findById(department);
-      if (!dept) {
+    // Validate department exists
+    const dept = await Department.findById(departmentId);
+    if (!dept) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found'
+      });
+    }
+
+    // Validate coordinator if provided
+    if (coordinatorId) {
+      const coordinator = await Faculty.findById(coordinatorId);
+      if (!coordinator) {
         return res.status(404).json({
           success: false,
-          message: 'Department not found'
+          message: 'Coordinator Faculty not found'
+        });
+      }
+    }
+
+    // Validate studentIds if provided
+    if (studentIds && studentIds.length > 0) {
+      const students = await Student.find({ _id: { $in: studentIds } });
+      if (students.length !== studentIds.length) {
+        return res.status(404).json({
+          success: false,
+          message: 'Some students not found'
         });
       }
     }
 
     const classDoc = await Class.create({
       name,
-      department,
-      semester,
-      academicYear
+      departmentId,
+      coordinatorId,
+      roomNo,
+      studentIds,
+      timeTable
     });
 
-    const populatedClass = await Class.findById(classDoc._id)
-      .populate('department', 'name code')
-      .populate('academicYear', 'year');
+    const populated = await populateClass(Class.findById(classDoc._id));
 
     return res.status(201).json({
       success: true,
       message: 'Class created successfully',
-      data: populatedClass
+      data: populated
     });
   } catch (error) {
     console.error('Create class error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors).map((e) => e.message).join(', ')
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'Error creating class'
@@ -112,11 +143,11 @@ export const createClass = async (req, res) => {
  */
 export const updateClass = async (req, res) => {
   try {
-    const { department, academicYear } = req.body;
-    
+    const { departmentId, coordinatorId, studentIds } = req.body;
+
     // Validate department if provided
-    if (department) {
-      const dept = await Department.findById(department);
+    if (departmentId) {
+      const dept = await Department.findById(departmentId);
       if (!dept) {
         return res.status(404).json({
           success: false,
@@ -125,12 +156,34 @@ export const updateClass = async (req, res) => {
       }
     }
 
-    const classDoc = await Class.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('department', 'name code')
-     .populate('academicYear', 'year');
+    // Validate coordinator if provided
+    if (coordinatorId) {
+      const coordinator = await Faculty.findById(coordinatorId);
+      if (!coordinator) {
+        return res.status(404).json({
+          success: false,
+          message: 'Coordinator Faculty not found'
+        });
+      }
+    }
+
+    // Validate studentIds if provided
+    if (studentIds && studentIds.length > 0) {
+      const students = await Student.find({ _id: { $in: studentIds } });
+      if (students.length !== studentIds.length) {
+        return res.status(404).json({
+          success: false,
+          message: 'Some students not found'
+        });
+      }
+    }
+
+    const classDoc = await populateClass(
+      Class.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+      })
+    );
 
     if (!classDoc) {
       return res.status(404).json({
@@ -146,6 +199,12 @@ export const updateClass = async (req, res) => {
     });
   } catch (error) {
     console.error('Update class error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors).map((e) => e.message).join(', ')
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'Error updating class'

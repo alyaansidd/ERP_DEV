@@ -1,5 +1,4 @@
 import Subject from '../models/Subject.js';
-import Faculty from '../models/Faculty.js';
 
 /**
  * Get all subjects
@@ -7,10 +6,8 @@ import Faculty from '../models/Faculty.js';
  */
 export const getAllSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.find()
-      .populate('faculty', 'department designation')
-      .populate('faculty.user', 'name email');
-    
+    const subjects = await Subject.find();
+
     return res.status(200).json({
       success: true,
       count: subjects.length,
@@ -31,17 +28,15 @@ export const getAllSubjects = async (req, res) => {
  */
 export const getSubjectById = async (req, res) => {
   try {
-    const subject = await Subject.findById(req.params.id)
-      .populate('faculty', 'department designation')
-      .populate('faculty.user', 'name email');
-    
+    const subject = await Subject.findById(req.params.id);
+
     if (!subject) {
       return res.status(404).json({
         success: false,
         message: 'Subject not found'
       });
     }
-    
+
     return res.status(200).json({
       success: true,
       data: subject
@@ -61,43 +56,34 @@ export const getSubjectById = async (req, res) => {
  */
 export const createSubject = async (req, res) => {
   try {
-    const { name, code, department, semester, faculty: facultyId } = req.body;
+    const { subjectCode, name, credit } = req.body;
 
-    if (!name || !code || !department || !semester || !facultyId) {
+    if (!subjectCode || !name || credit === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: name, code, department, semester, and faculty'
-      });
-    }
-
-    // Check if faculty exists
-    const faculty = await Faculty.findById(facultyId);
-    if (!faculty) {
-      return res.status(404).json({
-        success: false,
-        message: 'Faculty not found'
+        message: 'Please provide all required fields: subjectCode, name, and credit'
       });
     }
 
     const subject = await Subject.create({
+      subjectCode,
       name,
-      code,
-      department,
-      semester,
-      faculty: facultyId
+      credit
     });
-
-    const populatedSubject = await Subject.findById(subject._id)
-      .populate('faculty', 'department designation')
-      .populate('faculty.user', 'name email');
 
     return res.status(201).json({
       success: true,
       message: 'Subject created successfully',
-      data: populatedSubject
+      data: subject
     });
   } catch (error) {
     console.error('Create subject error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors).map((e) => e.message).join(', ')
+      });
+    }
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -117,25 +103,11 @@ export const createSubject = async (req, res) => {
  */
 export const updateSubject = async (req, res) => {
   try {
-    const { faculty: facultyId } = req.body;
-    
-    // If faculty is being updated, validate it exists
-    if (facultyId) {
-      const faculty = await Faculty.findById(facultyId);
-      if (!faculty) {
-        return res.status(404).json({
-          success: false,
-          message: 'Faculty not found'
-        });
-      }
-    }
-
     const subject = await Subject.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('faculty', 'department designation')
-     .populate('faculty.user', 'name email');
+    );
 
     if (!subject) {
       return res.status(404).json({
@@ -151,6 +123,18 @@ export const updateSubject = async (req, res) => {
     });
   } catch (error) {
     console.error('Update subject error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors).map((e) => e.message).join(', ')
+      });
+    }
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Subject with this code already exists'
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'Error updating subject'

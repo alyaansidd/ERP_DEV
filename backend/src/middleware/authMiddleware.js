@@ -45,6 +45,7 @@ export const verifyToken = (req, res, next) => {
 /**
  * Middleware to check if user has specific role
  * @param {Array<string>} allowedRoles - Array of roles allowed to access the route
+ *                                       (use ACCESS.*.* from config/roles.js)
  */
 export const checkRole = (allowedRoles) => {
   return (req, res, next) => {
@@ -58,7 +59,9 @@ export const checkRole = (allowedRoles) => {
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Insufficient permissions.'
+        message: 'Access denied. Insufficient permissions.',
+        requiredRoles: allowedRoles,
+        yourRole: req.user.role,
       });
     }
 

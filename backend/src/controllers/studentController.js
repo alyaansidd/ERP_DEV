@@ -2,16 +2,22 @@ import Student from '../models/Student.js';
 import User from '../models/User.js';
 
 /**
+ * Populate helper — reuses the same populate chain everywhere.
+ */
+const populateStudent = (query) =>
+  query
+    .populate('userId', 'name email phoneNo role')
+    .populate('departmentId', 'name code')
+    .populate('classId', 'name');
+
+/**
  * Get all students
  * @route GET /api/students
  */
 export const getAllStudents = async (req, res) => {
   try {
-    const students = await Student.find()
-      .populate('user', 'name email role')
-      .populate('department', 'name code')
-      .populate('class', 'name');
-    
+    const students = await populateStudent(Student.find());
+
     return res.status(200).json({
       success: true,
       count: students.length,
@@ -32,18 +38,15 @@ export const getAllStudents = async (req, res) => {
  */
 export const getStudentById = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id)
-      .populate('user', 'name email role')
-      .populate('department', 'name code')
-      .populate('class', 'name');
-    
+    const student = await populateStudent(Student.findById(req.params.id));
+
     if (!student) {
       return res.status(404).json({
         success: false,
         message: 'Student not found'
       });
     }
-    
+
     return res.status(200).json({
       success: true,
       data: student
@@ -63,24 +66,24 @@ export const getStudentById = async (req, res) => {
  */
 export const createStudent = async (req, res) => {
   try {
-    const { rollNo, department, class: classId, semester, admissionYear, user } = req.body;
+    const { userId, rollNo, classId, departmentId, program, fatherName, fatherNo } = req.body;
 
-    if (!rollNo || !user) {
+    // Required-field check
+    if (!userId || !rollNo || !classId || !departmentId || !program || !fatherName) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide roll number and user ID'
+        message: 'Please provide all required fields: userId, rollNo, classId, departmentId, program, fatherName'
       });
     }
 
-    // Check if user exists and has student role
-    const userDoc = await User.findById(user);
+    // Verify the user exists and has the student role
+    const userDoc = await User.findById(userId);
     if (!userDoc) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
-
     if (userDoc.role !== 'student') {
       return res.status(400).json({
         success: false,
@@ -88,28 +91,27 @@ export const createStudent = async (req, res) => {
       });
     }
 
-    // Check if roll number already exists
-    const existingStudent = await Student.findOne({ rollNo });
-    if (existingStudent) {
+    // Duplicate check — rollNo or userId
+    const existing = await Student.findOne({ $or: [{ rollNo }, { userId }] });
+    if (existing) {
+      const field = existing.rollNo === rollNo ? 'Roll number' : 'User';
       return res.status(409).json({
         success: false,
-        message: 'Roll number already exists'
+        message: `${field} already linked to a student record`
       });
     }
 
     const student = await Student.create({
+      userId,
       rollNo,
-      department,
-      class: classId,
-      semester,
-      admissionYear,
-      user
+      classId,
+      departmentId,
+      program,
+      fatherName,
+      fatherNo
     });
 
-    const populatedStudent = await Student.findById(student._id)
-      .populate('user', 'name email role')
-      .populate('department', 'name code')
-      .populate('class', 'name');
+    const populatedStudent = await populateStudent(Student.findById(student._id));
 
     return res.status(201).json({
       success: true,
@@ -121,8 +123,12 @@ export const createStudent = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: 'Roll number already exists'
+        message: 'Duplicate value — roll number or user already exists'
       });
+    }
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((e) => e.message).join(', ');
+      return res.status(400).json({ success: false, message: messages });
     }
     return res.status(500).json({
       success: false,
@@ -137,13 +143,12 @@ export const createStudent = async (req, res) => {
  */
 export const updateStudent = async (req, res) => {
   try {
-    const student = await Student.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('user', 'name email role')
-     .populate('department', 'name code')
-     .populate('class', 'name');
+    const student = await populateStudent(
+      Student.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+      })
+    );
 
     if (!student) {
       return res.status(404).json({
@@ -159,6 +164,10 @@ export const updateStudent = async (req, res) => {
     });
   } catch (error) {
     console.error('Update student error:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((e) => e.message).join(', ');
+      return res.status(400).json({ success: false, message: messages });
+    }
     return res.status(500).json({
       success: false,
       message: 'Error updating student'

@@ -1,13 +1,52 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+
+const classLectureSchema = new mongoose.Schema({
+  facultyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Faculty"
+  },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Subject"
+  }
+}, { _id: false });
 
 const classSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true }, // CSE-A
-    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
-    semester: Number,
-    academicYear: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicYear' }
+    name: {
+      type: String,
+      required: true
+    },
+
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      required: true
+    },
+
+    coordinatorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Faculty"
+    },
+
+    roomNo: {
+      type: String
+    },
+
+    studentIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Student"
+    }],
+
+    timeTable: {
+      type: Map,
+      of: {
+        type: Map,
+        of: classLectureSchema
+      }
+    }
   },
   { timestamps: true }
 );
 
-export default mongoose.model('Class', classSchema);
+export default mongoose.model("Class", classSchema);

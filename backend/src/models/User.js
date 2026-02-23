@@ -5,31 +5,44 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Please provide a name'],
+      required: [true, 'Name is required'],
       trim: true,
+      minlength: [3, 'Name must be at least 3 characters'],
       maxlength: [50, 'Name cannot be more than 50 characters']
+    },
+    phoneNo: {
+      type: String,
+      required: [true, 'Phone number is required'],
+      unique: true,
+      match: [/^[0-9]{10}$/, 'Phone number must be 10 digits']
+    },
+    role: {
+      type: String,
+      required: true,
+      enum: ['admin', 'student', 'faculty', 'hod']
+    },
+    aadharNo: {
+      type: String,
+      required: [true, 'Aadhar number is required'],
+      unique: true,
+      match: [/^[0-9]{12}$/, 'Aadhar must be 12 digits']
+    },
+    dob: {
+      type: Date,
+      required: [true, 'Date of birth is required']
     },
     email: {
       type: String,
       required: [true, 'Please provide an email'],
       unique: true,
       lowercase: true,
-      match: [
-        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-        'Please provide a valid email address'
-      ]
+      match: [/^\S+@\S+\.\S+$/, 'Invalid email']
     },
     password: {
       type: String,
       required: [true, 'Please provide a password'],
       minlength: [6, 'Password must be at least 6 characters'],
-      select: false // Don't return password by default
-    },
-    role: {
-      type: String,
-      enum: ['admin', 'faculty', 'student'],
-      default: 'student',
-      required: true
+      select: false
     },
     isActive: {
       type: Boolean,
@@ -49,9 +62,7 @@ const userSchema = new mongoose.Schema(
       select: false
     }
   },
-  {
-    timestamps: true // Adds createdAt and updatedAt
-  }
+  { timestamps: true }
 );
 
 // Hash password before saving

@@ -7,30 +7,17 @@ import {
   deleteAttendance
 } from '../controllers/attendanceController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-/**
- * Public routes (for viewing)
- */
+// ─── Read (all authenticated users – students see own) ─
+router.get('/',    verifyToken, checkRole(ACCESS.ATTENDANCE.READ),   getAllAttendance);
+router.get('/:id', verifyToken, checkRole(ACCESS.ATTENDANCE.READ),   getAttendanceById);
 
-// Get all attendance records
-router.get('/', getAllAttendance);
-
-// Get attendance by ID
-router.get('/:id', getAttendanceById);
-
-/**
- * Protected routes (require authentication)
- */
-
-// Create new attendance record
-router.post('/', verifyToken, checkRole(['admin', 'faculty']), createAttendance);
-
-// Update attendance
-router.put('/:id', verifyToken, checkRole(['admin', 'faculty']), updateAttendance);
-
-// Delete attendance
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteAttendance);
+// ─── Write (staff – faculty marks attendance) ──────────
+router.post('/',      verifyToken, checkRole(ACCESS.ATTENDANCE.CREATE), createAttendance);
+router.put('/:id',    verifyToken, checkRole(ACCESS.ATTENDANCE.UPDATE), updateAttendance);
+router.delete('/:id', verifyToken, checkRole(ACCESS.ATTENDANCE.DELETE), deleteAttendance);
 
 export default router;
