@@ -1,24 +1,56 @@
-// models/Faculty.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+
+const lectureSchema = new mongoose.Schema({
+  classId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Class"
+  },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Subject"
+  }
+}, { _id: false });
 
 const facultySchema = new mongoose.Schema(
   {
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       unique: true
     },
-    department: {
+
+    employeeNo: {
       type: String,
-      required: true
+      required: true,
+      unique: true
     },
+
     designation: {
       type: String,
       required: true
+    },
+
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      required: true
+    },
+
+    joiningDate: {
+      type: Date,
+      required: true
+    },
+
+    routing: {
+      type: Map,
+      of: {
+        type: Map,
+        of: lectureSchema
+      }
     }
   },
   { timestamps: true }
 );
 
-export default mongoose.model('Faculty', facultySchema);
+export default mongoose.model("Faculty", facultySchema);

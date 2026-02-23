@@ -1,16 +1,20 @@
 import Faculty from '../models/Faculty.js';
 import User from '../models/User.js';
 
+/** Consistent populate for Faculty queries */
+const populateFaculty = (query) =>
+  query
+    .populate('userId', 'name email phoneNo role')
+    .populate('departmentId', 'name code');
+
 /**
  * Get all faculty members
  * @route GET /api/faculty
  */
 export const getAllFaculty = async (req, res) => {
   try {
-    const faculty = await Faculty.find()
-      .populate('user', 'name email role')
-      .populate('department', 'name code');
-    
+    const faculty = await populateFaculty(Faculty.find());
+
     return res.status(200).json({
       success: true,
       count: faculty.length,
@@ -31,17 +35,15 @@ export const getAllFaculty = async (req, res) => {
  */
 export const getFacultyById = async (req, res) => {
   try {
-    const faculty = await Faculty.findById(req.params.id)
-      .populate('user', 'name email role')
-      .populate('department', 'name code');
-    
+    const faculty = await populateFaculty(Faculty.findById(req.params.id));
+
     if (!faculty) {
       return res.status(404).json({
         success: false,
         message: 'Faculty not found'
       });
     }
-    
+
     return res.status(200).json({
       success: true,
       data: faculty
@@ -61,17 +63,17 @@ export const getFacultyById = async (req, res) => {
  */
 export const createFaculty = async (req, res) => {
   try {
-    const { department, designation, user } = req.body;
+    const { userId, employeeNo, designation, departmentId, joiningDate, routing } = req.body;
 
-    if (!department || !designation || !user) {
+    if (!userId || !employeeNo || !designation || !departmentId || !joiningDate) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide department, designation, and user ID'
+        message: 'Please provide userId, employeeNo, designation, departmentId, and joiningDate'
       });
     }
 
     // Check if user exists and has faculty role
-    const userDoc = await User.findById(user);
+    const userDoc = await User.findById(userId);
     if (!userDoc) {
       return res.status(404).json({
         success: false,
@@ -86,36 +88,45 @@ export const createFaculty = async (req, res) => {
       });
     }
 
-    // Check if faculty already exists for this user
-    const existingFaculty = await Faculty.findOne({ user });
-    if (existingFaculty) {
+    // Check for duplicates on userId or employeeNo
+    const existing = await Faculty.findOne({ $or: [{ userId }, { employeeNo }] });
+    if (existing) {
+      const field = existing.userId.toString() === userId ? 'userId' : 'employeeNo';
       return res.status(409).json({
         success: false,
-        message: 'Faculty profile already exists for this user'
+        message: `Faculty with this ${field} already exists`
       });
     }
 
     const faculty = await Faculty.create({
-      department,
+      userId,
+      employeeNo,
       designation,
-      user
+      departmentId,
+      joiningDate,
+      routing
     });
 
-    const populatedFaculty = await Faculty.findById(faculty._id)
-      .populate('user', 'name email role')
-      .populate('department', 'name code');
+    const populated = await populateFaculty(Faculty.findById(faculty._id));
 
     return res.status(201).json({
       success: true,
       message: 'Faculty created successfully',
-      data: populatedFaculty
+      data: populated
     });
   } catch (error) {
     console.error('Create faculty error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors).map((e) => e.message).join(', ')
+      });
+    }
     if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
       return res.status(409).json({
         success: false,
-        message: 'Faculty profile already exists for this user'
+        message: `Faculty with this ${field} already exists`
       });
     }
     return res.status(500).json({
@@ -131,12 +142,12 @@ export const createFaculty = async (req, res) => {
  */
 export const updateFaculty = async (req, res) => {
   try {
-    const faculty = await Faculty.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('user', 'name email role')
-     .populate('department', 'name code');
+    const faculty = await populateFaculty(
+      Faculty.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+      })
+    );
 
     if (!faculty) {
       return res.status(404).json({
@@ -152,6 +163,19 @@ export const updateFaculty = async (req, res) => {
     });
   } catch (error) {
     console.error('Update faculty error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors).map((e) => e.message).join(', ')
+      });
+    }
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({
+        success: false,
+        message: `Faculty with this ${field} already exists`
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'Error updating faculty'

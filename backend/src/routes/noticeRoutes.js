@@ -7,22 +7,17 @@ import {
   deleteNotice
 } from '../controllers/noticeController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-// Get all notices
-router.get('/', getAllNotices);
+// ─── Read (all authenticated users) ────────────────────
+router.get('/',    verifyToken, checkRole(ACCESS.NOTICE.READ),   getAllNotices);
+router.get('/:id', verifyToken, checkRole(ACCESS.NOTICE.READ),   getNoticeById);
 
-// Get notice by ID
-router.get('/:id', getNoticeById);
-
-// Create new notice
-router.post('/', verifyToken, checkRole(['admin', 'faculty']), createNotice);
-
-// Update notice
-router.put('/:id', verifyToken, checkRole(['admin', 'faculty']), updateNotice);
-
-// Delete notice
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteNotice);
+// ─── Write (staff can post, management can delete) ─────
+router.post('/',      verifyToken, checkRole(ACCESS.NOTICE.CREATE), createNotice);
+router.put('/:id',    verifyToken, checkRole(ACCESS.NOTICE.UPDATE), updateNotice);
+router.delete('/:id', verifyToken, checkRole(ACCESS.NOTICE.DELETE), deleteNotice);
 
 export default router;

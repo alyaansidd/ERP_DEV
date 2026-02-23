@@ -7,22 +7,17 @@ import {
   deleteStudent
 } from '../controllers/studentController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-// Get all students
-router.get('/', getAllStudents);
+// ─── Read (all authenticated users) ────────────────────
+router.get('/',    verifyToken, checkRole(ACCESS.STUDENT.READ),   getAllStudents);
+router.get('/:id', verifyToken, checkRole(ACCESS.STUDENT.READ),   getStudentById);
 
-// Get student by ID
-router.get('/:id', getStudentById);
-
-// Create new student
-router.post('/', verifyToken, checkRole(['admin', 'faculty']), createStudent);
-
-// Update student
-router.put('/:id', verifyToken, checkRole(['admin', 'faculty']), updateStudent);
-
-// Delete student
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteStudent);
+// ─── Write (management + staff) ────────────────────────
+router.post('/',      verifyToken, checkRole(ACCESS.STUDENT.CREATE), createStudent);
+router.put('/:id',    verifyToken, checkRole(ACCESS.STUDENT.UPDATE), updateStudent);
+router.delete('/:id', verifyToken, checkRole(ACCESS.STUDENT.DELETE), deleteStudent);
 
 export default router;

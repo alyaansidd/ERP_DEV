@@ -7,30 +7,17 @@ import {
   deleteDepartment
 } from '../controllers/departmentController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-/**
- * Public routes
- */
+// ─── Read (all authenticated users) ────────────────────
+router.get('/',    verifyToken, checkRole(ACCESS.DEPARTMENT.READ),   getAllDepartments);
+router.get('/:id', verifyToken, checkRole(ACCESS.DEPARTMENT.READ),   getDepartmentById);
 
-// Get all departments
-router.get('/', getAllDepartments);
-
-// Get department by ID
-router.get('/:id', getDepartmentById);
-
-/**
- * Protected routes (require authentication and admin role)
- */
-
-// Create new department
-router.post('/', verifyToken, checkRole(['admin']), createDepartment);
-
-// Update department
-router.put('/:id', verifyToken, checkRole(['admin']), updateDepartment);
-
-// Delete department
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteDepartment);
+// ─── Write (management / admin) ────────────────────────
+router.post('/',      verifyToken, checkRole(ACCESS.DEPARTMENT.CREATE), createDepartment);
+router.put('/:id',    verifyToken, checkRole(ACCESS.DEPARTMENT.UPDATE), updateDepartment);
+router.delete('/:id', verifyToken, checkRole(ACCESS.DEPARTMENT.DELETE), deleteDepartment);
 
 export default router;

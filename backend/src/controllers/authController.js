@@ -60,7 +60,10 @@ const buildAuthResponse = (user, accessToken, refreshToken, message) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      phoneNo: user.phoneNo,
+      aadharNo: user.aadharNo,
+      dob: user.dob
     }
   };
 };
@@ -73,22 +76,27 @@ const buildAuthResponse = (user, accessToken, refreshToken, message) => {
  */
 export const register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phoneNo, aadharNo, dob } = req.body;
 
     // Validation
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !phoneNo || !aadharNo || !dob || !role) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: name, email, password'
+        message: 'Please provide all required fields: name, email, password, phoneNo, aadharNo, dob, role'
       });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    // Check if user already exists (email, phone, or aadhar)
+    const existingUser = await User.findOne({
+      $or: [{ email }, { phoneNo }, { aadharNo }]
+    });
     if (existingUser) {
+      const field = existingUser.email === email.toLowerCase() ? 'email'
+        : existingUser.phoneNo === phoneNo ? 'phone number'
+        : 'Aadhar number';
       return res.status(409).json({
         success: false,
-        message: 'User with this email already exists'
+        message: `User with this ${field} already exists`
       });
     }
 
@@ -97,7 +105,10 @@ export const register = async (req, res) => {
       name,
       email,
       password,
-      role: role || 'student' // Default role is student
+      role,
+      phoneNo,
+      aadharNo,
+      dob
     });
 
     // Generate access + refresh tokens

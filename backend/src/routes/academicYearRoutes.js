@@ -7,30 +7,17 @@ import {
   deleteAcademicYear
 } from '../controllers/academicYearController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
+import { ACCESS } from '../config/roles.js';
 
 const router = express.Router();
 
-/**
- * Public routes (for viewing)
- */
+// ─── Read (all authenticated users) ────────────────────
+router.get('/',    verifyToken, checkRole(ACCESS.ACADEMIC_YEAR.READ),   getAllAcademicYears);
+router.get('/:id', verifyToken, checkRole(ACCESS.ACADEMIC_YEAR.READ),   getAcademicYearById);
 
-// Get all academic years
-router.get('/', getAllAcademicYears);
-
-// Get academic year by ID
-router.get('/:id', getAcademicYearById);
-
-/**
- * Protected routes (require authentication)
- */
-
-// Create new academic year
-router.post('/', verifyToken, checkRole(['admin']), createAcademicYear);
-
-// Update academic year
-router.put('/:id', verifyToken, checkRole(['admin']), updateAcademicYear);
-
-// Delete academic year
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteAcademicYear);
+// ─── Write (admin only) ────────────────────────────────
+router.post('/',      verifyToken, checkRole(ACCESS.ACADEMIC_YEAR.CREATE), createAcademicYear);
+router.put('/:id',    verifyToken, checkRole(ACCESS.ACADEMIC_YEAR.UPDATE), updateAcademicYear);
+router.delete('/:id', verifyToken, checkRole(ACCESS.ACADEMIC_YEAR.DELETE), deleteAcademicYear);
 
 export default router;
