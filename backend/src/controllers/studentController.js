@@ -1,14 +1,54 @@
 import Student from '../models/Student.js';
 import User from '../models/User.js';
+import Class from '../models/Class.js';
+
+const USER_FIELDS = ['name', 'email', 'password', 'phoneNo', 'aadharNo', 'dob', 'role'];
+const STUDENT_FIELDS = ['rollNo', 'classId', 'departmentId', 'program', 'fatherName', 'fatherNo'];
 
 /**
- * Populate helper — reuses the same populate chain everywhere.
+ * Populate helper - reuses the same populate chain everywhere.
  */
 const populateStudent = (query) =>
   query
     .populate('userId', 'name email phoneNo role')
     .populate('departmentId', 'name code')
     .populate('classId', 'name');
+
+const pickFields = (source, fields) => {
+  const picked = {};
+  fields.forEach((field) => {
+    if (source[field] !== undefined) {
+      picked[field] = source[field];
+    }
+  });
+  return picked;
+};
+
+const normalizeStudentPayload = (body = {}) => {
+  const nestedUser = body.user && typeof body.user === 'object' ? body.user : {};
+  const nestedStudent = body.student && typeof body.student === 'object' ? body.student : {};
+
+  const userData = {
+    ...pickFields(body, USER_FIELDS),
+    ...pickFields(nestedUser, USER_FIELDS)
+  };
+
+  const studentData = {
+    ...pickFields(body, STUDENT_FIELDS),
+    ...pickFields(nestedStudent, STUDENT_FIELDS)
+  };
+
+  return { userData, studentData };
+};
+
+const ensureClassExists = async (classId) => {
+  if (!classId) {
+    return null;
+  }
+
+  const classDoc = await Class.findById(classId);
+  return classDoc;
+};
 
 /**
  * Get all students
@@ -61,55 +101,96 @@ export const getStudentById = async (req, res) => {
 };
 
 /**
- * Create new student
+ * Create new student (creates User + Student together)
  * @route POST /api/students
  */
 export const createStudent = async (req, res) => {
   try {
-    const { userId, rollNo, classId, departmentId, program, fatherName, fatherNo } = req.body;
+    const { userData, studentData } = normalizeStudentPayload(req.body);
+    const { name, email, password, phoneNo, aadharNo, dob } = userData;
+    const { rollNo, classId, departmentId, program, fatherName, fatherNo } = studentData;
 
-    // Required-field check
-    if (!userId || !rollNo || !classId || !departmentId || !program || !fatherName) {
+    if (!name || !email || !password || !phoneNo || !aadharNo || !dob || !rollNo || !classId || !departmentId || !program || !fatherName) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: userId, rollNo, classId, departmentId, program, fatherName'
+        message: 'Please provide required fields: name, email, password, phoneNo, aadharNo, dob, rollNo, classId, departmentId, program, fatherName'
       });
     }
 
-    // Verify the user exists and has the student role
-    const userDoc = await User.findById(userId);
-    if (!userDoc) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    if (userDoc.role !== 'student') {
+    if (userData.role && userData.role !== 'student') {
       return res.status(400).json({
         success: false,
-        message: 'User must have student role'
+        message: 'Role must be student for student creation'
       });
     }
 
-    // Duplicate check — rollNo or userId
-    const existing = await Student.findOne({ $or: [{ rollNo }, { userId }] });
-    if (existing) {
-      const field = existing.rollNo === rollNo ? 'Roll number' : 'User';
+    const normalizedEmail = String(email).toLowerCase();
+    const existingUser = await User.findOne({
+      $or: [{ email: normalizedEmail }, { phoneNo }, { aadharNo }]
+    });
+
+    if (existingUser) {
+      const field = existingUser.email === normalizedEmail
+        ? 'Email'
+        : existingUser.phoneNo === phoneNo
+          ? 'Phone number'
+          : 'Aadhar number';
+
       return res.status(409).json({
         success: false,
-        message: `${field} already linked to a student record`
+        message: `${field} already exists`
       });
     }
 
-    const student = await Student.create({
-      userId,
-      rollNo,
-      classId,
-      departmentId,
-      program,
-      fatherName,
-      fatherNo
+    const existingStudentByRoll = await Student.findOne({ rollNo });
+    if (existingStudentByRoll) {
+      return res.status(409).json({
+        success: false,
+        message: 'Roll number already linked to a student record'
+      });
+    }
+
+    const classDoc = await ensureClassExists(classId);
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    const userDoc = await User.create({
+      name,
+      email: normalizedEmail,
+      password,
+      role: 'student',
+      phoneNo,
+      aadharNo,
+      dob
     });
+
+    let student;
+    try {
+      student = await Student.create({
+        userId: userDoc._id,
+        rollNo,
+        classId,
+        departmentId,
+        program,
+        fatherName,
+        fatherNo
+      });
+    } catch (studentError) {
+      await User.findByIdAndDelete(userDoc._id);
+      throw studentError;
+    }
+
+    try {
+      await Class.findByIdAndUpdate(classDoc._id, { $addToSet: { studentIds: student._id } });
+    } catch (classSyncError) {
+      await Student.findByIdAndDelete(student._id);
+      await User.findByIdAndDelete(userDoc._id);
+      throw classSyncError;
+    }
 
     const populatedStudent = await populateStudent(Student.findById(student._id));
 
@@ -123,7 +204,7 @@ export const createStudent = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: 'Duplicate value — roll number or user already exists'
+        message: 'Duplicate value - email, phone number, aadhar, or roll number already exists'
       });
     }
     if (error.name === 'ValidationError') {
@@ -138,32 +219,122 @@ export const createStudent = async (req, res) => {
 };
 
 /**
- * Update student
+ * Update student (updates User + Student together)
  * @route PUT /api/students/:id
  */
 export const updateStudent = async (req, res) => {
   try {
-    const student = await populateStudent(
-      Student.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true
-      })
-    );
+    const { userData, studentData } = normalizeStudentPayload(req.body);
 
-    if (!student) {
+    if (userData.role && userData.role !== 'student') {
+      return res.status(400).json({
+        success: false,
+        message: 'Role must remain student'
+      });
+    }
+
+    const studentDoc = await Student.findById(req.params.id);
+    if (!studentDoc) {
       return res.status(404).json({
         success: false,
         message: 'Student not found'
       });
     }
 
+    const userDoc = await User.findById(studentDoc.userId);
+    if (!userDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Linked user not found for this student'
+      });
+    }
+
+    if (studentData.rollNo && studentData.rollNo !== studentDoc.rollNo) {
+      const existingRoll = await Student.findOne({
+        rollNo: studentData.rollNo,
+        _id: { $ne: studentDoc._id }
+      });
+      if (existingRoll) {
+        return res.status(409).json({
+          success: false,
+          message: 'Roll number already linked to another student record'
+        });
+      }
+    }
+
+    if (userData.email && userData.email !== userDoc.email) {
+      const normalizedEmail = String(userData.email).toLowerCase();
+      const existingEmail = await User.findOne({ email: normalizedEmail, _id: { $ne: userDoc._id } });
+      if (existingEmail) {
+        return res.status(409).json({
+          success: false,
+          message: 'Email already exists'
+        });
+      }
+      userData.email = normalizedEmail;
+    }
+
+    if (userData.phoneNo && userData.phoneNo !== userDoc.phoneNo) {
+      const existingPhone = await User.findOne({ phoneNo: userData.phoneNo, _id: { $ne: userDoc._id } });
+      if (existingPhone) {
+        return res.status(409).json({
+          success: false,
+          message: 'Phone number already exists'
+        });
+      }
+    }
+
+    if (userData.aadharNo && userData.aadharNo !== userDoc.aadharNo) {
+      const existingAadhar = await User.findOne({ aadharNo: userData.aadharNo, _id: { $ne: userDoc._id } });
+      if (existingAadhar) {
+        return res.status(409).json({
+          success: false,
+          message: 'Aadhar number already exists'
+        });
+      }
+    }
+
+    const oldClassId = studentDoc.classId ? String(studentDoc.classId) : null;
+    const newClassId = studentData.classId ? String(studentData.classId) : oldClassId;
+
+    if (studentData.classId) {
+      const classDoc = await ensureClassExists(studentData.classId);
+      if (!classDoc) {
+        return res.status(404).json({
+          success: false,
+          message: 'Class not found'
+        });
+      }
+    }
+
+    Object.assign(userDoc, { ...userData, role: 'student' });
+    Object.assign(studentDoc, studentData);
+
+    await userDoc.save();
+    await studentDoc.save();
+
+    if (newClassId !== oldClassId) {
+      if (oldClassId) {
+        await Class.findByIdAndUpdate(oldClassId, { $pull: { studentIds: studentDoc._id } });
+      }
+      await Class.findByIdAndUpdate(newClassId, { $addToSet: { studentIds: studentDoc._id } });
+    }
+
+    const updatedStudent = await populateStudent(Student.findById(studentDoc._id));
+
     return res.status(200).json({
       success: true,
       message: 'Student updated successfully',
-      data: student
+      data: updatedStudent
     });
   } catch (error) {
     console.error('Update student error:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Duplicate value - email, phone number, aadhar, or roll number already exists'
+      });
+    }
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map((e) => e.message).join(', ');
       return res.status(400).json({ success: false, message: messages });
@@ -181,13 +352,20 @@ export const updateStudent = async (req, res) => {
  */
 export const deleteStudent = async (req, res) => {
   try {
-    const student = await Student.findByIdAndDelete(req.params.id);
-    if (!student) {
+    const existingStudent = await Student.findById(req.params.id);
+    if (!existingStudent) {
       return res.status(404).json({
         success: false,
         message: 'Student not found'
       });
     }
+
+    if (existingStudent.classId) {
+      await Class.findByIdAndUpdate(existingStudent.classId, { $pull: { studentIds: existingStudent._id } });
+    }
+
+    await Student.findByIdAndDelete(req.params.id);
+    await User.findByIdAndDelete(existingStudent.userId);
 
     return res.status(200).json({
       success: true,

@@ -65,15 +65,27 @@ export const getNoticeById = async (req, res) => {
 /**
  * Create new notice
  * @route POST /api/notices
+ * Access: admin, hod, faculty only
  */
 export const createNotice = async (req, res) => {
   try {
-    const { title, description, targetRole, postedBy } = req.body;
+    const { title, description, targetRole } = req.body;
+    const postedBy = req.user?.id;
+    const userRole = req.user?.role;
 
-    if (!title || !description || !postedBy) {
+    // Verify user is staff (admin, hod, or faculty)
+    const staffRoles = ['admin', 'hod', 'faculty'];
+    if (!staffRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only admin, HOD, or faculty can create notices.'
+      });
+    }
+
+    if (!title || !description) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide title, description, and postedBy'
+        message: 'Please provide title and description'
       });
     }
 
@@ -116,25 +128,7 @@ export const createNotice = async (req, res) => {
  */
 export const updateNotice = async (req, res) => {
   try {
-    const { postedBy } = req.body;
-    
-    // Validate postedBy if provided
-    if (postedBy) {
-      const user = await User.findById(postedBy);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
-    }
-
-    const notice = await Notice.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('postedBy', 'name email role');
-
+    const notice = await Notice.findById(req.params.id);
     if (!notice) {
       return res.status(404).json({
         success: false,
@@ -142,10 +136,26 @@ export const updateNotice = async (req, res) => {
       });
     }
 
+    if (String(notice.postedBy) !== String(req.user?.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only the notice creator can update this notice.'
+      });
+    }
+
+    const updatePayload = { ...req.body };
+    delete updatePayload.postedBy;
+
+    const updatedNotice = await Notice.findByIdAndUpdate(
+      req.params.id,
+      updatePayload,
+      { new: true, runValidators: true }
+    ).populate('postedBy', 'name email role');
+
     return res.status(200).json({
       success: true,
       message: 'Notice updated successfully',
-      data: notice
+      data: updatedNotice
     });
   } catch (error) {
     console.error('Update notice error:', error);
@@ -159,16 +169,31 @@ export const updateNotice = async (req, res) => {
 /**
  * Delete notice
  * @route DELETE /api/notices/:id
+ * Access: admin only (middleware enforced)
+ * Additional: Creator can also delete their own notice
  */
 export const deleteNotice = async (req, res) => {
   try {
-    const notice = await Notice.findByIdAndDelete(req.params.id);
+    const notice = await Notice.findById(req.params.id);
     if (!notice) {
       return res.status(404).json({
         success: false,
         message: 'Notice not found'
       });
     }
+
+    // Allow deletion if user is admin OR is the notice creator
+    const isAdmin = req.user?.role === 'admin';
+    const isCreator = String(notice.postedBy) === String(req.user?.id);
+
+    if (!isAdmin && !isCreator) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only the notice creator or admin can delete this notice.'
+      });
+    }
+
+    await Notice.findByIdAndDelete(req.params.id);
 
     return res.status(200).json({
       success: true,

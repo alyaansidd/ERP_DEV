@@ -1,5 +1,32 @@
 import Subject from '../models/Subject.js';
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getNextAvailableSubjectCode = async (baseCode) => {
+  const escapedBase = escapeRegex(baseCode);
+  const codePattern = new RegExp(`^${escapedBase}(?:-(\\d+))?$`);
+  const existingSubjects = await Subject.find(
+    { subjectCode: { $regex: codePattern } },
+    { subjectCode: 1, _id: 0 }
+  ).lean();
+
+  let maxSuffix = 0;
+
+  existingSubjects.forEach(({ subjectCode }) => {
+    if (subjectCode === baseCode) {
+      maxSuffix = Math.max(maxSuffix, 0);
+      return;
+    }
+
+    const match = String(subjectCode).match(new RegExp(`^${escapedBase}-(\\d+)$`));
+    if (match) {
+      maxSuffix = Math.max(maxSuffix, Number(match[1]));
+    }
+  });
+
+  return `${baseCode}-${maxSuffix + 1}`;
+};
+
 /**
  * Get all subjects
  * @route GET /api/subjects
@@ -57,23 +84,47 @@ export const getSubjectById = async (req, res) => {
 export const createSubject = async (req, res) => {
   try {
     const { subjectCode, name, credit } = req.body;
+    const normalizedSubjectCode = String(subjectCode || '').trim();
+    const normalizedName = String(name || '').trim();
 
-    if (!subjectCode || !name || credit === undefined) {
+    if (!normalizedSubjectCode || !normalizedName || credit === undefined) {
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields: subjectCode, name, and credit'
       });
     }
 
-    const subject = await Subject.create({
-      subjectCode,
-      name,
-      credit
-    });
+    let codeToCreate = normalizedSubjectCode;
+    let subject;
+    let usedFallbackCode = false;
+
+    try {
+      subject = await Subject.create({
+        subjectCode: codeToCreate,
+        name: normalizedName,
+        credit
+      });
+    } catch (createError) {
+      if (createError.code !== 11000) {
+        throw createError;
+      }
+
+      // Keep create behavior resilient if client reuses an existing code.
+      codeToCreate = await getNextAvailableSubjectCode(normalizedSubjectCode);
+      usedFallbackCode = true;
+
+      subject = await Subject.create({
+        subjectCode: codeToCreate,
+        name: normalizedName,
+        credit
+      });
+    }
 
     return res.status(201).json({
       success: true,
-      message: 'Subject created successfully',
+      message: usedFallbackCode
+        ? `Subject code already existed. Created with new code: ${codeToCreate}`
+        : 'Subject created successfully',
       data: subject
     });
   } catch (error) {
