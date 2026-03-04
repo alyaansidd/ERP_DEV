@@ -154,6 +154,7 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
     // Validation
     if (!email || !password) {
@@ -164,7 +165,7 @@ export const login = async (req, res) => {
     }
 
     // Find user (include password field for comparison)
-    const user = await User.findOne({ email }).select('+password +refreshTokens');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password +refreshTokens');
 
     if (!user) {
       return res.status(401).json({

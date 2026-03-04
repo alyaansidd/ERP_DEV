@@ -2,6 +2,17 @@ import { body } from 'express-validator';
 
 const roles = ['admin', 'faculty', 'student', 'hod'];
 
+const normalizeEmailInput = (value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  return value
+    .trim()
+    .replace(/^['\"]+|['\"]+$/g, '')
+    .toLowerCase();
+};
+
 export const registerValidator = [
   body('name')
     .trim()
@@ -45,9 +56,10 @@ export const registerValidator = [
 
 export const loginValidator = [
   body('email')
-    .trim()
+    .customSanitizer(normalizeEmailInput)
     .notEmpty()
     .withMessage('Email is required')
+    .bail()
     .isEmail()
     .withMessage('Please provide a valid email address')
     .normalizeEmail(),
