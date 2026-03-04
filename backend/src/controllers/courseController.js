@@ -104,6 +104,20 @@ export const createCourse = async (req, res) => {
  */
 export const updateCourse = async (req, res) => {
   try {
+    if (req.body.code) {
+      const existingCode = await Course.findOne({
+        code: req.body.code,
+        _id: { $ne: req.params.id }
+      }).select('_id');
+
+      if (existingCode) {
+        return res.status(409).json({
+          success: false,
+          message: 'Course with this code already exists'
+        });
+      }
+    }
+
     const course = await Course.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -124,6 +138,12 @@ export const updateCourse = async (req, res) => {
     });
   } catch (error) {
     console.error('Update course error:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Course with this code already exists'
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'Error updating course'
