@@ -19,7 +19,7 @@ const noticeSchema = new mongoose.Schema(
     },
     targetRole: {
       type: String,
-      enum: ['all', 'student', 'faculty'],
+      enum: ['all', 'student', 'faculty', 'hod'],
       default: 'all'
     }
   },

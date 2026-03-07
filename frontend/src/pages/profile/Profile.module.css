@@ -1,0 +1,21 @@
+.hero {
+  display: flex; align-items: center; gap: 18px;
+  padding-bottom: 20px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--bd);
+}
+.avatar {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--ac), var(--ac2));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fd); font-size: 24px; font-weight: 800; color: #fff;
+  flex-shrink: 0;
+}
+.name { font-family: var(--fd); font-size: 19px; font-weight: 700; }
+.email { font-size: 13px; color: var(--tx2); margin-top: 2px; }
+.row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--bd);
+}
+.row:last-child { border-bottom: none; }
+.key { font-size: 13px; color: var(--tx2); }
+.val { font-size: 13px; font-weight: 500; }

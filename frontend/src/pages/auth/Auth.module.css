@@ -1,0 +1,93 @@
+.wrap {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -5%, rgba(79,142,247,.14) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 85% 85%, rgba(124,92,252,.09) 0%, transparent 60%);
+}
+
+.card {
+  width: 100%; max-width: 420px;
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: var(--r2);
+  padding: 40px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.7);
+  animation: fadeUp .35s ease;
+}
+
+.logo {
+  font-family: var(--fd);
+  font-size: 20px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--ac), var(--ac2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 2px;
+}
+.logoSub {
+  font-size: 10px; color: var(--tx3);
+  letter-spacing: .5px; text-transform: uppercase;
+  margin-bottom: 28px;
+}
+.heading { font-family: var(--fd); font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.sub { color: var(--tx2); font-size: 13px; margin-bottom: 24px; }
+
+.forgotRow { text-align: right; margin-bottom: 16px; margin-top: -8px; }
+.forgot { font-size: 12px; color: var(--ac); text-decoration: none; }
+.forgot:hover { text-decoration: underline; }
+
+.back { display: block; text-align: center; margin-top: 16px; font-size: 12px; color: var(--ac); text-decoration: none; }
+.back:hover { text-decoration: underline; }
+
+.hint {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--s2);
+  border-radius: var(--r);
+  font-size: 12px;
+  color: var(--tx2);
+  line-height: 1.6;
+  border: 1px solid var(--bd);
+}
+.hintTitle {
+  font-weight: 700;
+  color: var(--tx);
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.hintSub {
+  margin-top: 10px;
+  color: var(--tx3);
+  font-size: 11px;
+}
+.hintSub code { color: var(--ac); }
+
+.credTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.credTable th {
+  text-align: left;
+  padding: 4px 8px;
+  color: var(--tx3);
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  font-size: 10px;
+  border-bottom: 1px solid var(--bd);
+}
+.credTable td {
+  padding: 5px 8px;
+  color: var(--tx2);
+  border-bottom: 1px solid var(--bd);
+}
+.credTable tr:last-child td { border-bottom: none; }
+.credTable td:first-child { color: var(--ac); font-weight: 600; }
+.credTable td:last-child { color: var(--ok); font-family: monospace; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
