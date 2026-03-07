@@ -1,6 +1,7 @@
 import Faculty from '../models/Faculty.js';
 import User from '../models/User.js';
 import Department from '../models/Department.js';
+import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
 
 /** Consistent populate for Faculty queries */
 const populateFaculty = (query) =>
@@ -14,7 +15,9 @@ const populateFaculty = (query) =>
  */
 export const getAllFaculty = async (req, res) => {
   try {
-    const faculty = await populateFaculty(Faculty.find());
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    const filter = scopedDepartmentId ? { departmentId: scopedDepartmentId } : {};
+    const faculty = await populateFaculty(Faculty.find(filter));
 
     return res.status(200).json({
       success: true,
@@ -22,6 +25,10 @@ export const getAllFaculty = async (req, res) => {
       data: faculty
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get faculty error:', error);
     return res.status(500).json({
       success: false,
@@ -45,11 +52,23 @@ export const getFacultyById = async (req, res) => {
       });
     }
 
+    const isAllowed = await isDepartmentAllowedForHod(req, faculty.departmentId?._id || faculty.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only access faculty from their assigned department'
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: faculty
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get faculty error:', error);
     return res.status(500).json({
       success: false,
@@ -91,6 +110,14 @@ export const createFaculty = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Department not found'
+      });
+    }
+
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(departmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only create faculty in their assigned department'
       });
     }
 
@@ -187,6 +214,10 @@ export const createFaculty = async (req, res) => {
       data: populated
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     if (createdUserId) {
       await User.findByIdAndDelete(createdUserId).catch((cleanupError) => {
         console.error('Rollback user create error:', cleanupError.message);
@@ -230,6 +261,14 @@ export const updateFaculty = async (req, res) => {
       });
     }
 
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(existingFaculty.departmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only update faculty from their assigned department'
+      });
+    }
+
     const oldDepartmentId = existingFaculty.departmentId ? String(existingFaculty.departmentId) : null;
     const newDepartmentId = req.body.departmentId ? String(req.body.departmentId) : oldDepartmentId;
 
@@ -239,6 +278,12 @@ export const updateFaculty = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Department not found'
+        });
+      }
+      if (scopedDepartmentId && String(req.body.departmentId) !== scopedDepartmentId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. HOD can only assign faculty to their own department'
         });
       }
     }
@@ -274,6 +319,10 @@ export const updateFaculty = async (req, res) => {
       data: faculty
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Update faculty error:', error);
     if (error.name === 'ValidationError') {
       return res.status(400).json({
@@ -301,13 +350,23 @@ export const updateFaculty = async (req, res) => {
  */
 export const deleteFaculty = async (req, res) => {
   try {
-    const faculty = await Faculty.findByIdAndDelete(req.params.id);
+    const faculty = await Faculty.findById(req.params.id);
     if (!faculty) {
       return res.status(404).json({
         success: false,
         message: 'Faculty not found'
       });
     }
+
+    const isAllowed = await isDepartmentAllowedForHod(req, faculty.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only delete faculty from their assigned department'
+      });
+    }
+
+    await Faculty.findByIdAndDelete(req.params.id);
 
     // Cascade delete linked user account for this faculty profile.
     if (faculty.userId) {
@@ -331,6 +390,10 @@ export const deleteFaculty = async (req, res) => {
       message: 'Faculty and associated user deleted successfully'
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Delete faculty error:', error);
     return res.status(500).json({
       success: false,

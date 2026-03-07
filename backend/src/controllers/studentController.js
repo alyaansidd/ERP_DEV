@@ -1,6 +1,7 @@
 import Student from '../models/Student.js';
 import User from '../models/User.js';
 import Class from '../models/Class.js';
+import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
 
 const USER_FIELDS = ['name', 'email', 'password', 'phoneNo', 'aadharNo', 'dob', 'role'];
 const STUDENT_FIELDS = ['rollNo', 'classId', 'departmentId', 'program', 'fatherName', 'fatherNo'];
@@ -56,7 +57,9 @@ const ensureClassExists = async (classId) => {
  */
 export const getAllStudents = async (req, res) => {
   try {
-    const students = await populateStudent(Student.find());
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    const filter = scopedDepartmentId ? { departmentId: scopedDepartmentId } : {};
+    const students = await populateStudent(Student.find(filter));
 
     return res.status(200).json({
       success: true,
@@ -64,6 +67,9 @@ export const getAllStudents = async (req, res) => {
       data: students
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
     console.error('Get students error:', error);
     return res.status(500).json({
       success: false,
@@ -87,11 +93,22 @@ export const getStudentById = async (req, res) => {
       });
     }
 
+    const isAllowed = await isDepartmentAllowedForHod(req, student.departmentId?._id || student.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only access students from their assigned department'
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: student
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
     console.error('Get student error:', error);
     return res.status(500).json({
       success: false,
@@ -158,6 +175,23 @@ export const createStudent = async (req, res) => {
       });
     }
 
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId) {
+      if (String(departmentId) !== scopedDepartmentId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. HOD can only create students in their assigned department'
+        });
+      }
+
+      if (String(classDoc.departmentId) !== scopedDepartmentId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Selected class does not belong to your assigned department'
+        });
+      }
+    }
+
     const userDoc = await User.create({
       name,
       email: normalizedEmail,
@@ -200,6 +234,9 @@ export const createStudent = async (req, res) => {
       data: populatedStudent
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
     console.error('Create student error:', error);
     if (error.code === 11000) {
       return res.status(409).json({
@@ -238,6 +275,14 @@ export const updateStudent = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Student not found'
+      });
+    }
+
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(studentDoc.departmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only update students from their assigned department'
       });
     }
 
@@ -305,6 +350,19 @@ export const updateStudent = async (req, res) => {
           message: 'Class not found'
         });
       }
+      if (scopedDepartmentId && String(classDoc.departmentId) !== scopedDepartmentId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Selected class does not belong to your assigned department'
+        });
+      }
+    }
+
+    if (scopedDepartmentId && studentData.departmentId && String(studentData.departmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only assign student to their own department'
+      });
     }
 
     Object.assign(userDoc, { ...userData, role: 'student' });
@@ -328,6 +386,9 @@ export const updateStudent = async (req, res) => {
       data: updatedStudent
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
     console.error('Update student error:', error);
     if (error.code === 11000) {
       return res.status(409).json({
@@ -360,6 +421,14 @@ export const deleteStudent = async (req, res) => {
       });
     }
 
+    const isAllowed = await isDepartmentAllowedForHod(req, existingStudent.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only delete students from their assigned department'
+      });
+    }
+
     if (existingStudent.classId) {
       await Class.findByIdAndUpdate(existingStudent.classId, { $pull: { studentIds: existingStudent._id } });
     }
@@ -372,6 +441,9 @@ export const deleteStudent = async (req, res) => {
       message: 'Student deleted successfully'
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
     console.error('Delete student error:', error);
     return res.status(500).json({
       success: false,

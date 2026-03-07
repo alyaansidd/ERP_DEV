@@ -53,6 +53,7 @@ export const ACCESS = Object.freeze({
     CREATE: ADMIN_ONLY,         // Only admin creates departments
     UPDATE: MANAGEMENT,         // Admin & HOD can update their department
     DELETE: ADMIN_ONLY,         // Only admin deletes
+    ASSIGN_HOD: ADMIN_ONLY,     // Only admin can assign/reassign HOD
   },
 
   // ─── Faculty ──────────────────────────────

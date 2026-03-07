@@ -2,6 +2,7 @@ import Class from '../models/Class.js';
 import Department from '../models/Department.js';
 import Faculty from '../models/Faculty.js';
 import Student from '../models/Student.js';
+import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
 
 /** Consistent populate for Class queries */
 const populateClass = (query) =>
@@ -16,7 +17,9 @@ const populateClass = (query) =>
  */
 export const getAllClasses = async (req, res) => {
   try {
-    const classes = await populateClass(Class.find());
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    const filter = scopedDepartmentId ? { departmentId: scopedDepartmentId } : {};
+    const classes = await populateClass(Class.find(filter));
 
     return res.status(200).json({
       success: true,
@@ -24,6 +27,10 @@ export const getAllClasses = async (req, res) => {
       data: classes
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get classes error:', error);
     return res.status(500).json({
       success: false,
@@ -47,11 +54,23 @@ export const getClassById = async (req, res) => {
       });
     }
 
+    const isAllowed = await isDepartmentAllowedForHod(req, classDoc.departmentId?._id || classDoc.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only access classes from their assigned department'
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: classDoc
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get class error:', error);
     return res.status(500).json({
       success: false,
@@ -75,6 +94,14 @@ export const createClass = async (req, res) => {
       });
     }
 
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(departmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only create classes in their assigned department'
+      });
+    }
+
     // Validate department exists
     const dept = await Department.findById(departmentId);
     if (!dept) {
@@ -93,6 +120,12 @@ export const createClass = async (req, res) => {
           message: 'Coordinator Faculty not found'
         });
       }
+      if (String(coordinator.departmentId) !== String(departmentId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Coordinator must belong to the same department as the class'
+        });
+      }
     }
 
     // Validate studentIds if provided
@@ -102,6 +135,14 @@ export const createClass = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Some students not found'
+        });
+      }
+
+      const invalidStudent = students.find((student) => String(student.departmentId) !== String(departmentId));
+      if (invalidStudent) {
+        return res.status(400).json({
+          success: false,
+          message: 'All students must belong to the same department as the class'
         });
       }
     }
@@ -123,6 +164,10 @@ export const createClass = async (req, res) => {
       data: populated
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Create class error:', error);
     if (error.name === 'ValidationError') {
       return res.status(400).json({
@@ -145,6 +190,24 @@ export const updateClass = async (req, res) => {
   try {
     const { departmentId, coordinatorId, studentIds } = req.body;
 
+    const existingClass = await Class.findById(req.params.id);
+    if (!existingClass) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(existingClass.departmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only update classes from their assigned department'
+      });
+    }
+
+    const targetDepartmentId = departmentId || existingClass.departmentId;
+
     // Validate department if provided
     if (departmentId) {
       const dept = await Department.findById(departmentId);
@@ -152,6 +215,13 @@ export const updateClass = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Department not found'
+        });
+      }
+
+      if (scopedDepartmentId && String(departmentId) !== scopedDepartmentId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. HOD can only assign class to their own department'
         });
       }
     }
@@ -165,6 +235,13 @@ export const updateClass = async (req, res) => {
           message: 'Coordinator Faculty not found'
         });
       }
+
+      if (String(coordinator.departmentId) !== String(targetDepartmentId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Coordinator must belong to the same department as the class'
+        });
+      }
     }
 
     // Validate studentIds if provided
@@ -174,6 +251,14 @@ export const updateClass = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Some students not found'
+        });
+      }
+
+      const invalidStudent = students.find((student) => String(student.departmentId) !== String(targetDepartmentId));
+      if (invalidStudent) {
+        return res.status(400).json({
+          success: false,
+          message: 'All students must belong to the same department as the class'
         });
       }
     }
@@ -198,6 +283,10 @@ export const updateClass = async (req, res) => {
       data: classDoc
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Update class error:', error);
     if (error.name === 'ValidationError') {
       return res.status(400).json({
@@ -218,7 +307,7 @@ export const updateClass = async (req, res) => {
  */
 export const deleteClass = async (req, res) => {
   try {
-    const classDoc = await Class.findByIdAndDelete(req.params.id);
+    const classDoc = await Class.findById(req.params.id);
     if (!classDoc) {
       return res.status(404).json({
         success: false,
@@ -226,11 +315,25 @@ export const deleteClass = async (req, res) => {
       });
     }
 
+    const isAllowed = await isDepartmentAllowedForHod(req, classDoc.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only delete classes from their assigned department'
+      });
+    }
+
+    await Class.findByIdAndDelete(req.params.id);
+
     return res.status(200).json({
       success: true,
       message: 'Class deleted successfully'
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Delete class error:', error);
     return res.status(500).json({
       success: false,
