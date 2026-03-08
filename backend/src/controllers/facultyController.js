@@ -87,6 +87,12 @@ export const createFaculty = async (req, res) => {
   try {
     const {
       userId,
+      name,
+      email,
+      password,
+      phoneNo,
+      aadharNo,
+      dob,
       employeeNo,
       designation,
       departmentId,
@@ -96,25 +102,48 @@ export const createFaculty = async (req, res) => {
     } = req.body;
 
     const hasUserId = Boolean(userId);
-    const hasUserPayload = Boolean(user && typeof user === 'object');
+    const hasNestedUserPayload = Boolean(user && typeof user === 'object');
+    const hasFlatUserPayload = Boolean(name || email || password || phoneNo || aadharNo || dob);
+    const hasUserPayload = hasNestedUserPayload || hasFlatUserPayload;
 
-    if (!employeeNo || !designation || !departmentId || !joiningDate) {
+    if (!employeeNo || !designation || !joiningDate) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide employeeNo, designation, departmentId, and joiningDate'
-      });
-    }
-
-    const departmentDoc = await Department.findById(departmentId);
-    if (!departmentDoc) {
-      return res.status(404).json({
-        success: false,
-        message: 'Department not found'
+        message: 'Please provide employeeNo, designation, and joiningDate'
       });
     }
 
     const scopedDepartmentId = await getScopedDepartmentId(req);
-    if (scopedDepartmentId && String(departmentId) !== scopedDepartmentId) {
+    let finalDepartmentId = departmentId;
+
+    // Auto-map departmentId when omitted by UI payload.
+    if (!finalDepartmentId) {
+      if (scopedDepartmentId) {
+        finalDepartmentId = scopedDepartmentId;
+      } else if (process.env.DEFAULT_FACULTY_DEPARTMENT_ID) {
+        finalDepartmentId = process.env.DEFAULT_FACULTY_DEPARTMENT_ID;
+      } else {
+        const departments = await Department.find({}, '_id').limit(2);
+        if (departments.length === 1) {
+          finalDepartmentId = departments[0]._id;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Unable to auto-map department. Set DEFAULT_FACULTY_DEPARTMENT_ID or ensure exactly one department exists.'
+          });
+        }
+      }
+    }
+
+    const departmentDoc = await Department.findById(finalDepartmentId);
+    if (!departmentDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found for auto-mapped departmentId'
+      });
+    }
+
+    if (scopedDepartmentId && String(finalDepartmentId) !== scopedDepartmentId) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. HOD can only create faculty in their assigned department'
@@ -141,29 +170,84 @@ export const createFaculty = async (req, res) => {
 
     if (hasUserPayload) {
       // New user flow from same faculty payload
-      const userPayload = user || {};
-      const { name, email, password, phoneNo, aadharNo, dob, isActive } = userPayload;
+      const userPayload = hasNestedUserPayload
+        ? (user || {})
+        : { name, email, password, phoneNo, aadharNo, dob };
+      const {
+        name: userName,
+        email: userEmail,
+        password: userPassword,
+        phoneNo: userPhoneNo,
+        aadharNo: userAadharNo,
+        dob: userDob,
+        isActive
+      } = userPayload;
 
-      if (!name || !email || !password || !phoneNo || !aadharNo || !dob) {
+      const normalizedUser = {
+        name: String(userName || '').trim(),
+        email: String(userEmail || '').trim().toLowerCase(),
+        password: String(userPassword || ''),
+        phoneNo: String(userPhoneNo || '').trim(),
+        aadharNo: String(userAadharNo || '').trim(),
+        dob: userDob
+      };
+
+      if (!normalizedUser.name || !normalizedUser.email || !normalizedUser.password || !normalizedUser.phoneNo || !normalizedUser.aadharNo || !normalizedUser.dob) {
         return res.status(400).json({
           success: false,
           message: 'Provide either userId OR user{name, email, password, phoneNo, aadharNo, dob}'
         });
       }
 
-      userDoc = await User.create({
-        name,
-        email,
-        password,
-        phoneNo,
-        aadharNo,
-        dob,
-        role: 'faculty',
-        isActive: typeof isActive === 'boolean' ? isActive : true
+      // Pre-check duplicates to avoid unexpected duplicate-key insert failures.
+      const existingUser = await User.findOne({
+        $or: [
+          { email: normalizedUser.email },
+          { phoneNo: normalizedUser.phoneNo },
+          { aadharNo: normalizedUser.aadharNo }
+        ]
       });
 
-      createdUserId = userDoc._id;
-      facultyUserId = userDoc._id;
+      if (existingUser) {
+        const duplicateField = existingUser.email === normalizedUser.email
+          ? 'email'
+          : existingUser.phoneNo === normalizedUser.phoneNo
+            ? 'phoneNo'
+            : 'aadharNo';
+
+        // If an existing faculty user is found, reuse it (unless faculty profile already exists).
+        if (existingUser.role === 'faculty') {
+          const facultyExists = await Faculty.findOne({ userId: existingUser._id });
+          if (!facultyExists) {
+            userDoc = existingUser;
+            facultyUserId = existingUser._id;
+          } else {
+            return res.status(409).json({
+              success: false,
+              message: `User with this ${duplicateField} already has a faculty profile`
+            });
+          }
+        } else {
+          return res.status(409).json({
+            success: false,
+            message: `User with this ${duplicateField} already exists with role "${existingUser.role}"`
+          });
+        }
+      } else {
+        userDoc = await User.create({
+          name: normalizedUser.name,
+          email: normalizedUser.email,
+          password: normalizedUser.password,
+          phoneNo: normalizedUser.phoneNo,
+          aadharNo: normalizedUser.aadharNo,
+          dob: normalizedUser.dob,
+          role: 'faculty',
+          isActive: typeof isActive === 'boolean' ? isActive : true
+        });
+
+        createdUserId = userDoc._id;
+        facultyUserId = userDoc._id;
+      }
     } else {
       // Existing user flow
       userDoc = await User.findById(facultyUserId);
@@ -196,13 +280,13 @@ export const createFaculty = async (req, res) => {
       userId: facultyUserId,
       employeeNo,
       designation,
-      departmentId,
+      departmentId: finalDepartmentId,
       joiningDate,
       routing
     });
 
     await Department.findByIdAndUpdate(
-      departmentId,
+      finalDepartmentId,
       { $addToSet: { facultyIds: faculty._id } }
     );
 

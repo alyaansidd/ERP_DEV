@@ -9,6 +9,14 @@ const departmentSchema = new mongoose.Schema(
       trim: true
     },
 
+    code: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      uppercase: true
+    },
+
     hod: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Faculty"
