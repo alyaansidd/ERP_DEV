@@ -14,3 +14,16 @@
 .desc { font-size: 13px; color: var(--tx2); line-height: 1.7; margin-bottom: 12px; }
 .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .by, .date { font-size: 11px; color: var(--tx3); }
+
+@media (max-width: 768px) {
+  .card {
+    padding: 14px;
+  }
+  .title {
+    font-size: 15px;
+  }
+  .cardActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

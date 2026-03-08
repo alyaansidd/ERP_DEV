@@ -1,6 +1,7 @@
 import Faculty from '../models/Faculty.js';
 import User from '../models/User.js';
 import Department from '../models/Department.js';
+import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
 
 /** Consistent populate for Faculty queries */
 const populateFaculty = (query) =>
@@ -14,7 +15,9 @@ const populateFaculty = (query) =>
  */
 export const getAllFaculty = async (req, res) => {
   try {
-    const faculty = await populateFaculty(Faculty.find());
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    const filter = scopedDepartmentId ? { departmentId: scopedDepartmentId } : {};
+    const faculty = await populateFaculty(Faculty.find(filter));
 
     return res.status(200).json({
       success: true,
@@ -22,6 +25,10 @@ export const getAllFaculty = async (req, res) => {
       data: faculty
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get faculty error:', error);
     return res.status(500).json({
       success: false,
@@ -45,11 +52,23 @@ export const getFacultyById = async (req, res) => {
       });
     }
 
+    const isAllowed = await isDepartmentAllowedForHod(req, faculty.departmentId?._id || faculty.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only access faculty from their assigned department'
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: faculty
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get faculty error:', error);
     return res.status(500).json({
       success: false,
@@ -68,6 +87,12 @@ export const createFaculty = async (req, res) => {
   try {
     const {
       userId,
+      name,
+      email,
+      password,
+      phoneNo,
+      aadharNo,
+      dob,
       employeeNo,
       designation,
       departmentId,
@@ -77,20 +102,51 @@ export const createFaculty = async (req, res) => {
     } = req.body;
 
     const hasUserId = Boolean(userId);
-    const hasUserPayload = Boolean(user && typeof user === 'object');
+    const hasNestedUserPayload = Boolean(user && typeof user === 'object');
+    const hasFlatUserPayload = Boolean(name || email || password || phoneNo || aadharNo || dob);
+    const hasUserPayload = hasNestedUserPayload || hasFlatUserPayload;
 
-    if (!employeeNo || !designation || !departmentId || !joiningDate) {
+    if (!employeeNo || !designation || !joiningDate) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide employeeNo, designation, departmentId, and joiningDate'
+        message: 'Please provide employeeNo, designation, and joiningDate'
       });
     }
 
-    const departmentDoc = await Department.findById(departmentId);
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    let finalDepartmentId = departmentId;
+
+    // Auto-map departmentId when omitted by UI payload.
+    if (!finalDepartmentId) {
+      if (scopedDepartmentId) {
+        finalDepartmentId = scopedDepartmentId;
+      } else if (process.env.DEFAULT_FACULTY_DEPARTMENT_ID) {
+        finalDepartmentId = process.env.DEFAULT_FACULTY_DEPARTMENT_ID;
+      } else {
+        const departments = await Department.find({}, '_id').limit(2);
+        if (departments.length === 1) {
+          finalDepartmentId = departments[0]._id;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Unable to auto-map department. Set DEFAULT_FACULTY_DEPARTMENT_ID or ensure exactly one department exists.'
+          });
+        }
+      }
+    }
+
+    const departmentDoc = await Department.findById(finalDepartmentId);
     if (!departmentDoc) {
       return res.status(404).json({
         success: false,
-        message: 'Department not found'
+        message: 'Department not found for auto-mapped departmentId'
+      });
+    }
+
+    if (scopedDepartmentId && String(finalDepartmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only create faculty in their assigned department'
       });
     }
 
@@ -114,29 +170,84 @@ export const createFaculty = async (req, res) => {
 
     if (hasUserPayload) {
       // New user flow from same faculty payload
-      const userPayload = user || {};
-      const { name, email, password, phoneNo, aadharNo, dob, isActive } = userPayload;
+      const userPayload = hasNestedUserPayload
+        ? (user || {})
+        : { name, email, password, phoneNo, aadharNo, dob };
+      const {
+        name: userName,
+        email: userEmail,
+        password: userPassword,
+        phoneNo: userPhoneNo,
+        aadharNo: userAadharNo,
+        dob: userDob,
+        isActive
+      } = userPayload;
 
-      if (!name || !email || !password || !phoneNo || !aadharNo || !dob) {
+      const normalizedUser = {
+        name: String(userName || '').trim(),
+        email: String(userEmail || '').trim().toLowerCase(),
+        password: String(userPassword || ''),
+        phoneNo: String(userPhoneNo || '').trim(),
+        aadharNo: String(userAadharNo || '').trim(),
+        dob: userDob
+      };
+
+      if (!normalizedUser.name || !normalizedUser.email || !normalizedUser.password || !normalizedUser.phoneNo || !normalizedUser.aadharNo || !normalizedUser.dob) {
         return res.status(400).json({
           success: false,
           message: 'Provide either userId OR user{name, email, password, phoneNo, aadharNo, dob}'
         });
       }
 
-      userDoc = await User.create({
-        name,
-        email,
-        password,
-        phoneNo,
-        aadharNo,
-        dob,
-        role: 'faculty',
-        isActive: typeof isActive === 'boolean' ? isActive : true
+      // Pre-check duplicates to avoid unexpected duplicate-key insert failures.
+      const existingUser = await User.findOne({
+        $or: [
+          { email: normalizedUser.email },
+          { phoneNo: normalizedUser.phoneNo },
+          { aadharNo: normalizedUser.aadharNo }
+        ]
       });
 
-      createdUserId = userDoc._id;
-      facultyUserId = userDoc._id;
+      if (existingUser) {
+        const duplicateField = existingUser.email === normalizedUser.email
+          ? 'email'
+          : existingUser.phoneNo === normalizedUser.phoneNo
+            ? 'phoneNo'
+            : 'aadharNo';
+
+        // If an existing faculty user is found, reuse it (unless faculty profile already exists).
+        if (existingUser.role === 'faculty') {
+          const facultyExists = await Faculty.findOne({ userId: existingUser._id });
+          if (!facultyExists) {
+            userDoc = existingUser;
+            facultyUserId = existingUser._id;
+          } else {
+            return res.status(409).json({
+              success: false,
+              message: `User with this ${duplicateField} already has a faculty profile`
+            });
+          }
+        } else {
+          return res.status(409).json({
+            success: false,
+            message: `User with this ${duplicateField} already exists with role "${existingUser.role}"`
+          });
+        }
+      } else {
+        userDoc = await User.create({
+          name: normalizedUser.name,
+          email: normalizedUser.email,
+          password: normalizedUser.password,
+          phoneNo: normalizedUser.phoneNo,
+          aadharNo: normalizedUser.aadharNo,
+          dob: normalizedUser.dob,
+          role: 'faculty',
+          isActive: typeof isActive === 'boolean' ? isActive : true
+        });
+
+        createdUserId = userDoc._id;
+        facultyUserId = userDoc._id;
+      }
     } else {
       // Existing user flow
       userDoc = await User.findById(facultyUserId);
@@ -169,13 +280,13 @@ export const createFaculty = async (req, res) => {
       userId: facultyUserId,
       employeeNo,
       designation,
-      departmentId,
+      departmentId: finalDepartmentId,
       joiningDate,
       routing
     });
 
     await Department.findByIdAndUpdate(
-      departmentId,
+      finalDepartmentId,
       { $addToSet: { facultyIds: faculty._id } }
     );
 
@@ -187,6 +298,10 @@ export const createFaculty = async (req, res) => {
       data: populated
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     if (createdUserId) {
       await User.findByIdAndDelete(createdUserId).catch((cleanupError) => {
         console.error('Rollback user create error:', cleanupError.message);
@@ -230,6 +345,14 @@ export const updateFaculty = async (req, res) => {
       });
     }
 
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(existingFaculty.departmentId) !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only update faculty from their assigned department'
+      });
+    }
+
     const oldDepartmentId = existingFaculty.departmentId ? String(existingFaculty.departmentId) : null;
     const newDepartmentId = req.body.departmentId ? String(req.body.departmentId) : oldDepartmentId;
 
@@ -239,6 +362,12 @@ export const updateFaculty = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Department not found'
+        });
+      }
+      if (scopedDepartmentId && String(req.body.departmentId) !== scopedDepartmentId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. HOD can only assign faculty to their own department'
         });
       }
     }
@@ -274,6 +403,10 @@ export const updateFaculty = async (req, res) => {
       data: faculty
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Update faculty error:', error);
     if (error.name === 'ValidationError') {
       return res.status(400).json({
@@ -301,13 +434,23 @@ export const updateFaculty = async (req, res) => {
  */
 export const deleteFaculty = async (req, res) => {
   try {
-    const faculty = await Faculty.findByIdAndDelete(req.params.id);
+    const faculty = await Faculty.findById(req.params.id);
     if (!faculty) {
       return res.status(404).json({
         success: false,
         message: 'Faculty not found'
       });
     }
+
+    const isAllowed = await isDepartmentAllowedForHod(req, faculty.departmentId);
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only delete faculty from their assigned department'
+      });
+    }
+
+    await Faculty.findByIdAndDelete(req.params.id);
 
     // Cascade delete linked user account for this faculty profile.
     if (faculty.userId) {
@@ -331,6 +474,10 @@ export const deleteFaculty = async (req, res) => {
       message: 'Faculty and associated user deleted successfully'
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Delete faculty error:', error);
     return res.status(500).json({
       success: false,

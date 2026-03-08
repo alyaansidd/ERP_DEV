@@ -1,8 +1,8 @@
 import styles from './Misc.module.css'
 
-export function Card({ children, className = '', padding = true }) {
+export function Card({ children, className = '', padding = true, ...props }) {
   return (
-    <div className={[styles.card, padding ? styles.padded : '', className].join(' ')}>
+    <div className={[styles.card, padding ? styles.padded : '', className].join(' ')} {...props}>
       {children}
     </div>
   )

@@ -1,5 +1,5 @@
 .wrap { overflow-x: auto; border-radius: var(--r2); border: 1px solid var(--bd); box-shadow: 0 1px 3px rgba(0,0,0,.04); }
-.table { width: 100%; border-collapse: collapse; background: var(--sf); }
+.table { width: 100%; min-width: 620px; border-collapse: collapse; background: var(--sf); }
 .th {
   padding: 12px 16px; text-align: left;
   font-size: 12px; font-weight: 700; color: var(--tx2);
@@ -10,3 +10,17 @@
 .tr:last-child .td { border-bottom: none; }
 .tr:hover { background: var(--s2); transition: background .15s ease; }
 .actions { display: flex; gap: 8px; }
+
+@media (max-width: 768px) {
+  .th {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  .td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .actions {
+    gap: 6px;
+  }
+}

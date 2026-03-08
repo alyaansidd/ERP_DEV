@@ -9,6 +9,8 @@ export default function CrudPage({
   title, icon, resource, apiService,
   columns, FormComponent, defaultValues,
   canCreate, canEdit, canDelete,
+  mapCreatePayload,
+  mapUpdatePayload,
 }) {
   const { data: rows = [], isLoading, error } = useList(resource, apiService.getAll)
   const { create, update, remove } = useCrud(resource, apiService)
@@ -29,10 +31,12 @@ export default function CrudPage({
     setSaving(true); setSaveError('')
     try {
       if (modal.type === 'create') {
-        await create.mutateAsync(form)
+        const body = mapCreatePayload ? mapCreatePayload(form) : form
+        await create.mutateAsync(body)
       } else {
         const id = modal.item._id || modal.item.id
-        await update.mutateAsync({ id, body: form })
+        const body = mapUpdatePayload ? mapUpdatePayload(form, modal.item) : form
+        await update.mutateAsync({ id, body })
       }
       closeModal()
     } catch (e) {

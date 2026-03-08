@@ -22,7 +22,10 @@ function crudService(resource) {
   }
 }
 
-export const departmentsApi    = crudService('departments')
+export const departmentsApi    = {
+  ...crudService('departments'),
+  assignHod: (data) => apiClient.post('/departments/assign-hod', data),
+}
 export const studentsApi       = crudService('students')
 export const facultyApi        = crudService('faculty')
 export const coursesApi        = crudService('courses')

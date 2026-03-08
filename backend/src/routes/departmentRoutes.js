@@ -4,7 +4,8 @@ import {
   getDepartmentById,
   createDepartment,
   updateDepartment,
-  deleteDepartment
+  deleteDepartment,
+  assignHod
 } from '../controllers/departmentController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
 import { ACCESS } from '../config/roles.js';
@@ -17,6 +18,7 @@ router.get('/:id', verifyToken, checkRole(ACCESS.DEPARTMENT.READ),   getDepartme
 
 // ─── Write (management / admin) ────────────────────────
 router.post('/',      verifyToken, checkRole(ACCESS.DEPARTMENT.CREATE), createDepartment);
+router.post('/assign-hod', verifyToken, checkRole(ACCESS.DEPARTMENT.ASSIGN_HOD), assignHod);
 router.put('/:id',    verifyToken, checkRole(ACCESS.DEPARTMENT.UPDATE), updateDepartment);
 router.delete('/:id', verifyToken, checkRole(ACCESS.DEPARTMENT.DELETE), deleteDepartment);
 

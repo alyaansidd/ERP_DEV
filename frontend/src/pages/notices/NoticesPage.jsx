@@ -34,6 +34,11 @@ export default function NoticesPage() {
   function setField(n, v) { setForm((p) => ({ ...p, [n]: v })) }
   function openCreate() { setForm({ targetRole: 'all' }); setSaveError(''); setModal({ type: 'create' }) }
   function openEdit(n) { setForm({ ...n }); setSaveError(''); setModal({ type: 'edit', item: n }) }
+  function postedByLabel(postedBy) {
+    if (!postedBy) return ''
+    if (typeof postedBy === 'string') return postedBy
+    return postedBy.name || postedBy.email || postedBy._id || ''
+  }
 
   async function handleSave() {
     setSaving(true); setSaveError('')
@@ -67,7 +72,7 @@ export default function NoticesPage() {
             <p className={styles.desc}>{n.description}</p>
             <div className={styles.meta}>
               <Badge role={n.targetRole || 'all'} />
-              {n.postedBy && <span className={styles.by}>By: {n.postedBy}</span>}
+              {n.postedBy && <span className={styles.by}>By: {postedByLabel(n.postedBy)}</span>}
               {n.createdAt && <span className={styles.date}>{new Date(n.createdAt).toLocaleDateString()}</span>}
             </div>
           </div>
