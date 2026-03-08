@@ -24,13 +24,14 @@ const NAV = [
   { to: '/profile',         icon: '⚙️',  label: 'My Profile' },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth()
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={[styles.sidebar, isOpen ? styles.open : ''].join(' ')}>
       {/* Logo */}
       <div className={styles.logo}>
+        <button type='button' className={styles.mobileClose} onClick={onClose} aria-label='Close menu'>✕</button>
         <div className={styles.logoText}>Campus ERP</div>
         <div className={styles.logoSub}>Institutional Portal</div>
       </div>
@@ -47,6 +48,7 @@ export default function Sidebar() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              onClick={onClose}
               className={({ isActive }) =>
                 [styles.link, isActive ? styles.active : ''].join(' ')
               }

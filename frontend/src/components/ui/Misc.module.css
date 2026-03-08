@@ -48,3 +48,25 @@
 .statIcon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; font-size: 20px; }
 .statValue { font-family: var(--fd); font-size: 28px; font-weight: 800; line-height: 1; }
 .statLabel { font-size: 12px; color: var(--tx2); margin-top: 4px; }
+
+@media (max-width: 768px) {
+  .padded {
+    padding: 14px;
+  }
+  .pageHeader {
+    margin-bottom: 16px;
+  }
+  .pageTitle {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+  .pageActions {
+    width: 100%;
+  }
+  .statCard {
+    padding: 14px;
+  }
+  .statValue {
+    font-size: 22px;
+  }
+}

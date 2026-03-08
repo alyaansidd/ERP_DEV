@@ -18,13 +18,14 @@ const TITLES = {
   '/profile':        '⚙️ My Profile',
 }
 
-export default function Topbar() {
+export default function Topbar({ onMenuClick }) {
   const { user } = useAuth()
   const { pathname } = useLocation()
   const title = TITLES[pathname] || 'Campus ERP'
 
   return (
     <header className={styles.topbar}>
+      <button type='button' className={styles.menuBtn} onClick={onMenuClick} aria-label='Open menu'>☰</button>
       <div className={styles.title}>{title}</div>
       <div className={styles.right}>
         <Badge role={user?.role} />

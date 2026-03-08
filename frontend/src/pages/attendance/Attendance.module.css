@@ -19,3 +19,19 @@
 .aBtn { color: var(--dg); border-color: rgba(247,88,88,.2); }
 .aBtn:hover { background: rgba(247,88,88,.08); }
 .aOn { background: var(--dg) !important; color: #fff !important; border-color: var(--dg) !important; }
+
+@media (max-width: 768px) {
+  .row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toggle {
+    width: 100%;
+  }
+  .pBtn,
+  .aBtn {
+    flex: 1;
+    padding: 8px 14px;
+  }
+}

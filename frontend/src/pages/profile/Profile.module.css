@@ -19,3 +19,23 @@
 .row:last-child { border-bottom: none; }
 .key { font-size: 13px; color: var(--tx2); }
 .val { font-size: 13px; font-weight: 500; }
+
+@media (max-width: 768px) {
+  .hero {
+    gap: 12px;
+    padding-bottom: 14px;
+  }
+  .avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+  .name {
+    font-size: 17px;
+  }
+  .row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}

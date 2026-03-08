@@ -1,11 +1,24 @@
-import { Outlet, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
-import { Spinner } from '../ui/Misc'
 
 export default function AppLayout() {
   const { user, loading } = useAuth()
+  const { pathname } = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [sidebarOpen])
 
   if (loading) {
     return (
@@ -19,9 +32,10 @@ export default function AppLayout() {
 
   return (
     <div className='shell'>
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {sidebarOpen && <button type='button' className='shellBackdrop' onClick={() => setSidebarOpen(false)} aria-label='Close menu' />}
       <div className='main'>
-        <Topbar />
+        <Topbar onMenuClick={() => setSidebarOpen((v) => !v)} />
         <div className='page'>
           <Outlet />
         </div>

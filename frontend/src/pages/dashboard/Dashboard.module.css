@@ -49,3 +49,14 @@
 @media (max-width: 900px) {
   .bottom { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 768px) {
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .quickGrid {
+    grid-template-columns: 1fr;
+  }
+}

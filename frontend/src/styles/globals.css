@@ -60,6 +60,9 @@ body {
 .shell { display: flex; min-height: 100vh; }
 .main  { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
 .page  { padding: 24px; flex: 1; }
+.shellBackdrop {
+  display: none;
+}
 
 /* ── TYPOGRAPHY ───────────────────────────────────────────── */
 .font-display { font-family: var(--fd); }
@@ -85,7 +88,23 @@ body {
 .text-center { text-align: center; }
 
 /* ── RESPONSIVE ───────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .main { margin-left: 0; }
+  .page { padding: 16px; }
+  .shellBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(0, 0, 0, .35);
+    z-index: 90;
+  }
+}
+
 @media (max-width: 768px) {
   .main { margin-left: 0; }
   .g2, .g3 { grid-template-columns: 1fr; }
+  .page { padding: 14px; }
 }

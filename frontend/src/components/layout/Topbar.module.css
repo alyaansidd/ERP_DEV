@@ -11,17 +11,47 @@
   z-index: 50;
   box-shadow: 0 1px 3px rgba(0,0,0,.05);
 }
+.menuBtn {
+  display: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  background: var(--s2);
+  color: var(--tx);
+  cursor: pointer;
+  margin-right: 8px;
+}
 .title {
   font-family: var(--fd);
   font-size: 15px;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .right {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-left: 12px;
 }
 .name {
   font-size: 13px;
   color: var(--tx2);
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    padding: 0 12px;
+  }
+  .menuBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .name {
+    display: none;
+  }
 }
