@@ -32,6 +32,34 @@
 
 .textarea { resize: vertical; min-height: 80px; }
 
+.passwordWrap {
+  position: relative;
+}
+
+.withToggle {
+  padding-right: 64px;
+}
+
+.toggleBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--bd);
+  background: #fff;
+  color: var(--tx2);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.toggleBtn:hover {
+  background: var(--s2);
+  color: var(--tx);
+}
+
 select.control {
   appearance: none;
   cursor: pointer;

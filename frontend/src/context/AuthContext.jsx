@@ -54,7 +54,6 @@ const PERMISSIONS = {
   classes:          { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod'],              delete: ['admin'] },
   attendance:       { read: ['admin','hod','faculty','student'], create: ['admin','hod','faculty'], update: ['admin','hod','faculty'], delete: ['admin','hod'] },
   timetable:        { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod'],              delete: ['admin'] },
-  enrollments:      { read: ['admin','hod','faculty','student'], create: ['admin','hod','faculty'], update: ['admin','hod','faculty'], delete: ['admin','hod'] },
   'academic-years': { read: ['admin','hod','faculty','student'], create: ['admin'],             update: ['admin'],                    delete: ['admin'] },
   notices:          { read: ['admin','hod','faculty','student'], create: ['admin','hod','faculty'], update: ['admin','hod','faculty'], delete: ['admin','hod'] },
 }

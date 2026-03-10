@@ -1,6 +1,7 @@
 import Student from '../models/Student.js';
 import User from '../models/User.js';
 import Class from '../models/Class.js';
+import Course from '../models/Course.js';
 import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
 
 const USER_FIELDS = ['name', 'email', 'password', 'phoneNo', 'aadharNo', 'dob', 'role'];
@@ -13,7 +14,8 @@ const populateStudent = (query) =>
   query
     .populate('userId', 'name email phoneNo role')
     .populate('departmentId', 'name code')
-    .populate('classId', 'name');
+    .populate('classId', 'name')
+    .populate('program', 'name code');
 
 const pickFields = (source, fields) => {
   const picked = {};
@@ -49,6 +51,14 @@ const ensureClassExists = async (classId) => {
 
   const classDoc = await Class.findById(classId);
   return classDoc;
+};
+
+const ensureCourseExists = async (courseId) => {
+  if (!courseId) {
+    return null;
+  }
+
+  return Course.findById(courseId);
 };
 
 /**
@@ -172,6 +182,28 @@ export const createStudent = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Class not found'
+      });
+    }
+
+    const courseDoc = await ensureCourseExists(program);
+    if (!courseDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Program (course) not found'
+      });
+    }
+
+    if (String(classDoc.departmentId) !== String(departmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected class must belong to the selected department'
+      });
+    }
+
+    if (String(courseDoc.department) !== String(departmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected program (course) must belong to the selected department'
       });
     }
 
@@ -341,6 +373,8 @@ export const updateStudent = async (req, res) => {
 
     const oldClassId = studentDoc.classId ? String(studentDoc.classId) : null;
     const newClassId = studentData.classId ? String(studentData.classId) : oldClassId;
+    const targetDepartmentId = studentData.departmentId ? String(studentData.departmentId) : String(studentDoc.departmentId);
+    const targetProgramId = studentData.program ? String(studentData.program) : String(studentDoc.program);
 
     if (studentData.classId) {
       const classDoc = await ensureClassExists(studentData.classId);
@@ -356,6 +390,36 @@ export const updateStudent = async (req, res) => {
           message: 'Access denied. Selected class does not belong to your assigned department'
         });
       }
+    }
+
+    const targetClassDoc = await ensureClassExists(newClassId);
+    if (!targetClassDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    const targetCourseDoc = await ensureCourseExists(targetProgramId);
+    if (!targetCourseDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Program (course) not found'
+      });
+    }
+
+    if (String(targetClassDoc.departmentId) !== String(targetDepartmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected class must belong to the selected department'
+      });
+    }
+
+    if (String(targetCourseDoc.department) !== String(targetDepartmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected program (course) must belong to the selected department'
+      });
     }
 
     if (scopedDepartmentId && studentData.departmentId && String(studentData.departmentId) !== scopedDepartmentId) {

@@ -88,7 +88,7 @@ export default function AttendancePage() {
                 <div key={id} className={styles.row}>
                   <div>
                     <div className={styles.sName}>{s.userId?.name || `Roll: ${s.rollNo || '—'}`}</div>
-                    <div className={styles.sInfo}>{s.rollNo && `Roll: ${s.rollNo}`}{s.program && ` · ${s.program}`}</div>
+                    <div className={styles.sInfo}>{s.rollNo && `Roll: ${s.rollNo}`}{s.program && ` · ${s.program?.name || s.program?.code || s.program}`}</div>
                   </div>
                   <div className={styles.toggle}>
                     <button className={[styles.pBtn, st === 'P' ? styles.pOn : ''].join(' ')} onClick={() => toggle(id, 'P')}>P</button>

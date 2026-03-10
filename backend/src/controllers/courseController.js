@@ -1,4 +1,6 @@
 import Course from '../models/Course.js';
+import Department from '../models/Department.js';
+import mongoose from 'mongoose';
 
 /**
  * Get all courses
@@ -60,10 +62,25 @@ export const createCourse = async (req, res) => {
   try {
     const { name, code, department, semester, credits } = req.body;
 
-    if (!name || !code) {
+    if (!name || !code || !department || semester === undefined || credits === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide both name and code'
+        message: 'Please provide name, code, semester, credits, and department'
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(department)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid department id'
+      });
+    }
+
+    const departmentExists = await Department.exists({ _id: department });
+    if (!departmentExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected department does not exist'
       });
     }
 
@@ -104,6 +121,23 @@ export const createCourse = async (req, res) => {
  */
 export const updateCourse = async (req, res) => {
   try {
+    if (Object.prototype.hasOwnProperty.call(req.body, 'department')) {
+      if (!mongoose.Types.ObjectId.isValid(req.body.department)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department id'
+        });
+      }
+
+      const departmentExists = await Department.exists({ _id: req.body.department });
+      if (!departmentExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected department does not exist'
+        });
+      }
+    }
+
     if (req.body.code) {
       const existingCode = await Course.findOne({
         code: req.body.code,
