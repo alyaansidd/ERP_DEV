@@ -1,0 +1,322 @@
+.controlCard {
+  margin-bottom: 16px;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.editorPanel {
+  margin-top: 8px;
+  border: 1px solid #d6e0ea;
+  border-radius: 10px;
+  background: #f7fbfd;
+  padding: 12px;
+}
+
+.editorTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2f4858;
+  margin-bottom: 4px;
+}
+
+.editorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.editorActions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 18, 24, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 12px;
+}
+
+.modalCard {
+  width: min(640px, 100%);
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #d7e2ea;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+  padding: 14px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.modalHint {
+  font-size: 12px;
+  color: #617483;
+}
+
+.modalClose {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid #c8d5df;
+  background: #f6f9fc;
+  color: #51606b;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modalClose:hover {
+  background: #edf3f8;
+}
+
+.boardCard {
+  overflow: hidden;
+}
+
+.emptyWrap {
+  padding: 28px 12px;
+}
+
+.gridWrap {
+  padding: 14px;
+}
+
+.boardTitle {
+  border-left: 4px solid #2f7de1;
+  background: #d9e4f0;
+  color: #334155;
+  font-size: 31px;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  letter-spacing: .2px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.matrix {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 980px;
+}
+
+.matrix th,
+.matrix td {
+  border: 1px solid #b8c8cf;
+}
+
+.corner,
+.slotHead,
+.dayCell,
+.breakHead {
+  background: #45b8bd;
+  color: #f4fbfc;
+}
+
+.corner {
+  width: 58px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.slotHead {
+  min-width: 125px;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 500;
+  padding: 8px 6px;
+}
+
+.breakHead {
+  min-width: 90px;
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  padding: 8px 4px;
+}
+
+.dayCell {
+  width: 58px;
+  text-align: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 33px;
+  letter-spacing: 1px;
+  font-weight: 500;
+  padding: 8px 0;
+}
+
+.cell,
+.emptyCell {
+  vertical-align: top;
+  padding: 13px 12px 11px;
+  height: 134px;
+}
+
+.cellTop {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 20px;
+}
+
+.editCellBtn {
+  border: 1px solid #9fb2bf;
+  background: #ffffff;
+  color: #50616f;
+  border-radius: 99px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.editCellBtn:hover {
+  background: #edf4f8;
+}
+
+.activeEdit {
+  outline: 2px solid #2f7de1;
+  outline-offset: -2px;
+}
+
+.breakCell {
+  width: 90px;
+  text-align: center;
+  font-size: 15px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: #46606f;
+  background: #dce7ea;
+}
+
+.matrix tbody tr:nth-child(odd) .cell,
+.matrix tbody tr:nth-child(odd) .emptyCell {
+  background: #cfe6ec;
+}
+
+.matrix tbody tr:nth-child(even) .cell,
+.matrix tbody tr:nth-child(even) .emptyCell {
+  background: #f2f2f2;
+}
+
+.subject {
+  color: #48535c;
+  text-transform: uppercase;
+  font-size: 30px;
+  line-height: 1.2;
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: #56616a;
+  text-transform: uppercase;
+  font-size: 23px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.emptyCell {
+  color: #8a949b;
+  text-align: center;
+  font-size: 26px;
+  padding-top: 46px;
+}
+
+@media (max-width: 1200px) {
+  .slotHead { font-size: 28px; }
+  .breakHead { font-size: 14px; }
+  .dayCell { font-size: 28px; }
+  .subject { font-size: 24px; }
+  .meta { font-size: 19px; }
+}
+
+@media (max-width: 768px) {
+  .gridWrap {
+    padding: 10px;
+    overflow-x: auto;
+  }
+
+  .boardTitle {
+    font-size: 20px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+
+  .matrix {
+    min-width: 880px;
+  }
+
+  .corner {
+    width: 46px;
+    font-size: 20px;
+  }
+
+  .slotHead {
+    min-width: 102px;
+    font-size: 21px;
+  }
+
+  .breakHead {
+    min-width: 80px;
+    font-size: 12px;
+    padding: 6px 3px;
+  }
+
+  .dayCell {
+    width: 46px;
+    font-size: 21px;
+  }
+
+  .cell,
+  .emptyCell {
+    height: 100px;
+    padding: 9px 8px;
+  }
+
+  .editCellBtn {
+    font-size: 10px;
+    padding: 3px 7px;
+  }
+
+  .breakCell {
+    width: 80px;
+    font-size: 12px;
+    padding: 8px 4px;
+  }
+
+  .subject {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .meta {
+    font-size: 13px;
+  }
+
+  .emptyCell {
+    font-size: 19px;
+    padding-top: 34px;
+  }
+
+  .modalCard {
+    padding: 12px;
+  }
+}

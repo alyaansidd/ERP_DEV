@@ -15,6 +15,99 @@ const populateClass = (query) =>
     })
     .populate('studentIds', 'rollNo userId');
 
+const isPlainObject = (value) => {
+  if (!value || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+
+const mapToObject = (value, seen = new WeakSet()) => {
+  if (value == null) return value;
+  if (typeof value !== 'object') return value;
+
+  if (seen.has(value)) return {};
+  seen.add(value);
+
+  if (value instanceof Map) {
+    const out = {};
+    for (const [key, nested] of value.entries()) {
+      out[key] = mapToObject(nested, seen);
+    }
+    return out;
+  }
+
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  const out = {};
+  for (const [key, nested] of Object.entries(value)) {
+    out[key] = mapToObject(nested, seen);
+  }
+  return out;
+};
+
+const extractAssignments = (timeTable) => {
+  const tableObj = mapToObject(timeTable);
+  const assignments = [];
+
+  Object.entries(tableObj).forEach(([day, lectureMap]) => {
+    if (!lectureMap || typeof lectureMap !== 'object') return;
+
+    Object.entries(lectureMap).forEach(([lectureNo, lecture]) => {
+      if (!lecture || typeof lecture !== 'object' || !lecture.facultyId) return;
+      assignments.push({
+        day,
+        lectureNo,
+        facultyId: String(lecture.facultyId),
+        subjectId: lecture.subjectId || null
+      });
+    });
+  });
+
+  return assignments;
+};
+
+const syncFacultyRoutingForClass = async (classId, previousTimeTable, nextTimeTable) => {
+  const classIdStr = String(classId);
+  const prevAssignments = extractAssignments(previousTimeTable);
+  const nextAssignments = extractAssignments(nextTimeTable);
+  const facultyIds = [...new Set([...prevAssignments, ...nextAssignments].map((item) => item.facultyId))];
+
+  if (facultyIds.length === 0) return;
+
+  const facultyDocs = await Faculty.find({ _id: { $in: facultyIds } });
+  const facultyById = new Map(facultyDocs.map((faculty) => [String(faculty._id), faculty]));
+
+  for (const facultyId of facultyIds) {
+    const faculty = facultyById.get(facultyId);
+    if (!faculty) continue;
+
+    const routing = mapToObject(faculty.routing) || {};
+
+    prevAssignments
+      .filter((item) => item.facultyId === facultyId)
+      .forEach(({ day, lectureNo }) => {
+        if (!routing[day] || !routing[day][lectureNo]) return;
+        if (String(routing[day][lectureNo]?.classId || '') !== classIdStr) return;
+        delete routing[day][lectureNo];
+        if (Object.keys(routing[day]).length === 0) delete routing[day];
+      });
+
+    nextAssignments
+      .filter((item) => item.facultyId === facultyId)
+      .forEach(({ day, lectureNo, subjectId }) => {
+        if (!routing[day] || typeof routing[day] !== 'object') routing[day] = {};
+        routing[day][lectureNo] = { classId, subjectId };
+      });
+
+    await Faculty.updateOne(
+      { _id: faculty._id },
+      { $set: { routing } }
+    );
+  }
+};
+
 /**
  * Get all classes
  * @route GET /api/classes
@@ -161,6 +254,10 @@ export const createClass = async (req, res) => {
       timeTable
     });
 
+    if (timeTable && typeof timeTable === 'object') {
+      await syncFacultyRoutingForClass(classDoc._id, {}, timeTable);
+    }
+
     const populated = await populateClass(Class.findById(classDoc._id));
 
     return res.status(201).json({
@@ -280,6 +377,10 @@ export const updateClass = async (req, res) => {
         success: false,
         message: 'Class not found'
       });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'timeTable')) {
+      await syncFacultyRoutingForClass(existingClass._id, existingClass.timeTable || {}, classDoc.timeTable || {});
     }
 
     return res.status(200).json({

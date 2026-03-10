@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import styles from './Input.module.css'
 
 export default function Input({
@@ -5,6 +6,7 @@ export default function Input({
   placeholder, required, error, options,
 }) {
   const id = `field-${name}`
+  const [showPassword, setShowPassword] = useState(false)
 
   const renderControl = () => {
     if (type === 'select') {
@@ -30,6 +32,31 @@ export default function Input({
           className={[styles.control, styles.textarea, error ? styles.hasError : ''].join(' ')}
           onChange={(e) => onChange(name, e.target.value)}
         />
+      )
+    }
+
+    if (type === 'password') {
+      return (
+        <div className={styles.passwordWrap}>
+          <input
+            id={id}
+            type={showPassword ? 'text' : 'password'}
+            name={name}
+            value={value ?? ''}
+            placeholder={placeholder}
+            required={required}
+            className={[styles.control, styles.withToggle, error ? styles.hasError : ''].join(' ')}
+            onChange={(e) => onChange(name, e.target.value)}
+          />
+          <button
+            type='button'
+            className={styles.toggleBtn}
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
       )
     }
 
