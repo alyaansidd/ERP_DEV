@@ -21,7 +21,6 @@ import AcademicYearsPage from './pages/academic-years/AcademicYearsPage'
 import AttendancePage from './pages/attendance/AttendancePage'
 import NoticesPage from './pages/notices/NoticesPage'
 import TimetablePage from './pages/timetable/TimetablePage'
-import EnrollmentsPage from './pages/enrollments/EnrollmentsPage'
 import { RegisterPage, ProfilePage } from './pages/profile/ProfilePages'
 
 const queryClient = new QueryClient({
@@ -57,7 +56,6 @@ export default function App() {
               <Route path='/academic-years'  element={<AcademicYearsPage />} />
               <Route path='/attendance'      element={<AttendancePage />} />
               <Route path='/timetable'       element={<TimetablePage />} />
-              <Route path='/enrollments'     element={<EnrollmentsPage />} />
               <Route path='/notices'         element={<NoticesPage />} />
               <Route path='/register'        element={<RegisterPage />} />
               <Route path='/profile'         element={<ProfilePage />} />

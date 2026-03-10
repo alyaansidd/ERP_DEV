@@ -8,7 +8,11 @@ import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodSc
 const populateClass = (query) =>
   query
     .populate('departmentId', 'name')
-    .populate('coordinatorId', 'userId employeeNo designation')
+    .populate({
+      path: 'coordinatorId',
+      select: 'userId employeeNo designation',
+      populate: { path: 'userId', select: 'name' }
+    })
     .populate('studentIds', 'rollNo userId');
 
 /**
@@ -85,12 +89,12 @@ export const getClassById = async (req, res) => {
  */
 export const createClass = async (req, res) => {
   try {
-    const { name, departmentId, coordinatorId, roomNo, studentIds, timeTable } = req.body;
+    const { name, departmentId, coordinatorId, roomNo, semester, studentIds, timeTable } = req.body;
 
-    if (!name || !departmentId) {
+    if (!name || !departmentId || semester === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide name and departmentId'
+        message: 'Please provide name, departmentId, and semester'
       });
     }
 
@@ -152,6 +156,7 @@ export const createClass = async (req, res) => {
       departmentId,
       coordinatorId,
       roomNo,
+      semester,
       studentIds,
       timeTable
     });

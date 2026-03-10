@@ -28,9 +28,9 @@ const studentSchema = new mongoose.Schema(
     },
 
     program: {
-      type: String,
-      required: true,
-      trim: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true
     },
 
     fatherName: {

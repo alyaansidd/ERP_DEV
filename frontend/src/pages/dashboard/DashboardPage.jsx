@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { StatCard, PageHeader, Card, CardHeader, Empty, Spinner, Badge } from '../../components/ui/Misc'
-import { departmentsApi, studentsApi, facultyApi, coursesApi, subjectsApi, classesApi, noticesApi, attendanceApi, timetableApi, enrollmentsApi } from '../../api/services'
+import { departmentsApi, studentsApi, facultyApi, coursesApi, subjectsApi, classesApi, noticesApi, attendanceApi, timetableApi } from '../../api/services'
 import styles from './Dashboard.module.css'
 
 // All stats available for admins
@@ -42,13 +42,11 @@ const QUICK_LINKS = {
     { to: '/students',       icon: '👨‍🎓', label: 'Students' },
     { to: '/classes',        icon: '🏫', label: 'Classes' },
     { to: '/timetable',      icon: '🕐', label: 'Timetable' },
-    { to: '/enrollments',    icon: '📋', label: 'Enrollments' },
     { to: '/notices',        icon: '📢', label: 'Notices' },
   ],
   faculty: [
     { to: '/attendance',     icon: '✅', label: 'Attendance' },
     { to: '/timetable',      icon: '🕐', label: 'Timetable' },
-    { to: '/enrollments',    icon: '📋', label: 'Enrollments' },
     { to: '/notices',        icon: '📢', label: 'Notices' },
     { to: '/classes',        icon: '🏫', label: 'My Classes' },
     { to: '/students',       icon: '👨‍🎓', label: 'Students' },

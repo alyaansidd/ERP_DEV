@@ -15,7 +15,8 @@ const classSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     departmentId: {
@@ -30,7 +31,14 @@ const classSchema = new mongoose.Schema(
     },
 
     roomNo: {
-      type: String
+      type: String,
+      trim: true
+    },
+
+    semester: {
+      type: Number,
+      required: true,
+      min: 1
     },
 
     studentIds: [{

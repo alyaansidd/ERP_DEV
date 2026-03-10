@@ -18,7 +18,6 @@ const NAV = [
   { section: 'Operations' },
   { to: '/attendance',      icon: '✅', label: 'Attendance' },
   { to: '/timetable',       icon: '🕐', label: 'Timetable' },
-  { to: '/enrollments',     icon: '📋', label: 'Enrollments' },
   { section: 'Account' },
   { to: '/register',        icon: '➕', label: 'Register User', roles: ['admin'] },
   { to: '/profile',         icon: '⚙️',  label: 'My Profile' },

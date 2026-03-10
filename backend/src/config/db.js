@@ -40,6 +40,24 @@ const dropLegacyStudentUserIndex = async () => {
   }
 };
 
+const dropLegacyClassCompositeIndex = async () => {
+  try {
+    const classesCollection = mongoose.connection.collection('classes');
+    const indexes = await classesCollection.indexes();
+    const hasLegacyClassIndex = indexes.some((index) => index?.name === 'name_1_department_1_academicYear_1');
+
+    if (!hasLegacyClassIndex) {
+      return;
+    }
+
+    await classesCollection.dropIndex('name_1_department_1_academicYear_1');
+    console.log('Dropped legacy index classes.name_1_department_1_academicYear_1');
+  } catch (error) {
+    // Non-fatal migration step: keep startup alive even if index cleanup fails.
+    console.warn('Could not drop legacy classes.name_1_department_1_academicYear_1 index:', error.message);
+  }
+};
+
 const connectDB = async () => {
   const mongoUri = resolveMongoUri();
 
@@ -55,6 +73,7 @@ const connectDB = async () => {
 
     await dropLegacySubjectCodeIndex();
     await dropLegacyStudentUserIndex();
+    await dropLegacyClassCompositeIndex();
 
     console.log('MongoDB connected');
     return true;
