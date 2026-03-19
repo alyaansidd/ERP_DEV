@@ -1,5 +1,7 @@
 import Notice from '../models/Notice.js';
 import User from '../models/User.js';
+import Department from '../models/Department.js';
+import { getScopedDepartmentId } from '../utils/hodScope.js';
 
 /**
  * Get all notices
@@ -9,14 +11,28 @@ export const getAllNotices = async (req, res) => {
   try {
     const { targetRole } = req.query;
     let filter = {};
+
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId) {
+      filter = {
+        $or: [
+          { departmentId: scopedDepartmentId },
+          { targetRole: 'all' }
+        ]
+      };
+    }
     
     // Filter by target role if specified
     if (targetRole && targetRole !== 'all') {
-      filter.targetRole = targetRole;
+      filter = {
+        ...filter,
+        targetRole
+      };
     }
     
     const notices = await Notice.find(filter)
       .populate('postedBy', 'name email role')
+      .populate('departmentId', 'name code')
       .sort({ createdAt: -1 });
     
     return res.status(200).json({
@@ -25,6 +41,10 @@ export const getAllNotices = async (req, res) => {
       data: notices
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get notices error:', error);
     return res.status(500).json({
       success: false,
@@ -40,7 +60,8 @@ export const getAllNotices = async (req, res) => {
 export const getNoticeById = async (req, res) => {
   try {
     const notice = await Notice.findById(req.params.id)
-      .populate('postedBy', 'name email role');
+      .populate('postedBy', 'name email role')
+      .populate('departmentId', 'name code');
     
     if (!notice) {
       return res.status(404).json({
@@ -49,11 +70,23 @@ export const getNoticeById = async (req, res) => {
       });
     }
     
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(notice.departmentId?._id || notice.departmentId || '') !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only access notices from their assigned department'
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: notice
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Get notice error:', error);
     return res.status(500).json({
       success: false,
@@ -69,7 +102,7 @@ export const getNoticeById = async (req, res) => {
  */
 export const createNotice = async (req, res) => {
   try {
-    const { title, description, targetRole } = req.body;
+    const { title, description, targetRole, departmentId } = req.body;
     const postedBy = req.user?.id;
     const userRole = req.user?.role;
 
@@ -98,15 +131,34 @@ export const createNotice = async (req, res) => {
       });
     }
 
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    let resolvedDepartmentId = departmentId;
+
+    if (scopedDepartmentId) {
+      resolvedDepartmentId = scopedDepartmentId;
+    }
+
+    if (resolvedDepartmentId) {
+      const department = await Department.findById(resolvedDepartmentId);
+      if (!department) {
+        return res.status(404).json({
+          success: false,
+          message: 'Department not found'
+        });
+      }
+    }
+
     const notice = await Notice.create({
       title,
       description,
       targetRole: targetRole || 'all',
-      postedBy
+      postedBy,
+      departmentId: resolvedDepartmentId || undefined
     });
 
     const populatedNotice = await Notice.findById(notice._id)
-      .populate('postedBy', 'name email role');
+      .populate('postedBy', 'name email role')
+      .populate('departmentId', 'name code');
 
     return res.status(201).json({
       success: true,
@@ -114,6 +166,10 @@ export const createNotice = async (req, res) => {
       data: populatedNotice
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Create notice error:', error);
     return res.status(500).json({
       success: false,
@@ -136,6 +192,14 @@ export const updateNotice = async (req, res) => {
       });
     }
 
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(notice.departmentId || '') !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only update notices from their assigned department.'
+      });
+    }
+
     if (String(notice.postedBy) !== String(req.user?.id)) {
       return res.status(403).json({
         success: false,
@@ -146,11 +210,25 @@ export const updateNotice = async (req, res) => {
     const updatePayload = { ...req.body };
     delete updatePayload.postedBy;
 
+    if (scopedDepartmentId) {
+      updatePayload.departmentId = scopedDepartmentId;
+    } else if (Object.prototype.hasOwnProperty.call(updatePayload, 'departmentId') && updatePayload.departmentId) {
+      const department = await Department.findById(updatePayload.departmentId);
+      if (!department) {
+        return res.status(404).json({
+          success: false,
+          message: 'Department not found'
+        });
+      }
+    }
+
     const updatedNotice = await Notice.findByIdAndUpdate(
       req.params.id,
       updatePayload,
       { new: true, runValidators: true }
-    ).populate('postedBy', 'name email role');
+    )
+      .populate('postedBy', 'name email role')
+      .populate('departmentId', 'name code');
 
     return res.status(200).json({
       success: true,
@@ -158,6 +236,10 @@ export const updateNotice = async (req, res) => {
       data: updatedNotice
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Update notice error:', error);
     return res.status(500).json({
       success: false,
@@ -182,6 +264,14 @@ export const deleteNotice = async (req, res) => {
       });
     }
 
+    const scopedDepartmentId = await getScopedDepartmentId(req);
+    if (scopedDepartmentId && String(notice.departmentId || '') !== scopedDepartmentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. HOD can only delete notices from their assigned department.'
+      });
+    }
+
     // Allow deletion if user is admin OR is the notice creator
     const isAdmin = req.user?.role === 'admin';
     const isCreator = String(notice.postedBy) === String(req.user?.id);
@@ -200,6 +290,10 @@ export const deleteNotice = async (req, res) => {
       message: 'Notice deleted successfully'
     });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
+
     console.error('Delete notice error:', error);
     return res.status(500).json({
       success: false,

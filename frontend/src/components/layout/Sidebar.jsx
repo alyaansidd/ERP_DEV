@@ -5,26 +5,26 @@ import styles from './Sidebar.module.css'
 const NAV = [
   { section: 'Overview' },
   { to: '/',                icon: '🏠', label: 'Dashboard' },
-  { to: '/notices',         icon: '📢', label: 'Notices' },
+  { to: '/notices',         icon: '📢', label: 'Notices', resource: 'notices' },
   { section: 'Academic' },
-  { to: '/departments',     icon: '🏛️',  label: 'Departments' },
-  { to: '/courses',         icon: '📚', label: 'Courses' },
-  { to: '/subjects',        icon: '📝', label: 'Subjects' },
-  { to: '/classes',         icon: '🏫', label: 'Classes' },
-  { to: '/academic-years',  icon: '📅', label: 'Academic Years' },
+  { to: '/departments',     icon: '🏛️',  label: 'Departments', resource: 'departments' },
+  { to: '/courses',         icon: '📚', label: 'Courses', resource: 'courses' },
+  { to: '/subjects',        icon: '📝', label: 'Subjects', resource: 'subjects' },
+  { to: '/classes',         icon: '🏫', label: 'Classes', resource: 'classes' },
+  { to: '/academic-years',  icon: '📅', label: 'Academic Years', resource: 'academic-years' },
   { section: 'People' },
-  { to: '/students',        icon: '👨‍🎓', label: 'Students' },
-  { to: '/faculty',         icon: '👩‍🏫', label: 'Faculty' },
+  { to: '/students',        icon: '👨‍🎓', label: 'Students', resource: 'students' },
+  { to: '/faculty',         icon: '👩‍🏫', label: 'Faculty', resource: 'faculty' },
   { section: 'Operations' },
-  { to: '/attendance',      icon: '✅', label: 'Attendance' },
-  { to: '/timetable',       icon: '🕐', label: 'Timetable' },
+  { to: '/attendance',      icon: '✅', label: 'Attendance', resource: 'attendance' },
+  { to: '/timetable',       icon: '🕐', label: 'Timetable', resource: 'timetable' },
   { section: 'Account' },
-  { to: '/register',        icon: '➕', label: 'Register User', roles: ['admin'] },
+  { to: '/register',        icon: '➕', label: 'Register User', resource: 'register', action: 'create' },
   { to: '/profile',         icon: '⚙️',  label: 'My Profile' },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { user, logout } = useAuth()
+  const { user, logout, can } = useAuth()
 
   return (
     <aside className={[styles.sidebar, isOpen ? styles.open : ''].join(' ')}>
@@ -41,7 +41,7 @@ export default function Sidebar({ isOpen, onClose }) {
           if (item.section) {
             return <div key={i} className={styles.section}>{item.section}</div>
           }
-          if (item.roles && !item.roles.includes(user?.role)) return null
+          if (item.resource && !can(item.resource, item.action || 'read')) return null
           return (
             <NavLink
               key={item.to}
