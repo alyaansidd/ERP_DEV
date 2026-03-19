@@ -17,6 +17,10 @@ const noticeSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department'
+    },
     targetRole: {
       type: String,
       enum: ['all', 'student', 'faculty', 'hod'],

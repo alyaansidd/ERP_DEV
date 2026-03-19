@@ -5,9 +5,23 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 
 export default function AppLayout() {
-  const { user, loading } = useAuth()
+  const { user, loading, can } = useAuth()
   const { pathname } = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const protectedRoutes = [
+    { prefix: '/departments', resource: 'departments', action: 'read' },
+    { prefix: '/students', resource: 'students', action: 'read' },
+    { prefix: '/faculty', resource: 'faculty', action: 'read' },
+    { prefix: '/courses', resource: 'courses', action: 'read' },
+    { prefix: '/subjects', resource: 'subjects', action: 'read' },
+    { prefix: '/classes', resource: 'classes', action: 'read' },
+    { prefix: '/academic-years', resource: 'academic-years', action: 'read' },
+    { prefix: '/attendance', resource: 'attendance', action: 'read' },
+    { prefix: '/timetable', resource: 'timetable', action: 'read' },
+    { prefix: '/notices', resource: 'notices', action: 'read' },
+    { prefix: '/register', resource: 'register', action: 'create' },
+  ]
 
   useEffect(() => {
     setSidebarOpen(false)
@@ -29,6 +43,11 @@ export default function AppLayout() {
   }
 
   if (!user) return <Navigate to='/login' replace />
+
+  const routeRule = protectedRoutes.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  if (routeRule && !can(routeRule.resource, routeRule.action)) {
+    return <Navigate to='/' replace />
+  }
 
   return (
     <div className='shell'>

@@ -46,16 +46,16 @@ const PERMISSIONS = {
   register:         { read: ['admin','hod','faculty','student'], create: ['admin'] },
   
   // Resources
-  departments:      { read: ['admin','hod','faculty','student'], create: ['admin'],             update: ['admin','hod'],              delete: ['admin'] },
+  departments:      { read: ['admin','faculty','student'], create: ['admin'],             update: ['admin'],                    delete: ['admin'] },
   faculty:          { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod','faculty'],   delete: ['admin'] },
   students:         { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod','faculty'],   delete: ['admin'] },
-  courses:          { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod'],              delete: ['admin'] },
+  courses:          { read: ['admin','faculty','student'], create: ['admin'],              update: ['admin'],                    delete: ['admin'] },
   subjects:         { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod'],              delete: ['admin'] },
-  classes:          { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod'],              delete: ['admin'] },
-  attendance:       { read: ['admin','hod','faculty','student'], create: ['admin','hod','faculty'], update: ['admin','hod','faculty'], delete: ['admin','hod'] },
+  classes:          { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod'],              delete: ['admin','hod'] },
+  attendance:       { read: ['admin','hod','faculty','student'], create: ['admin','hod','faculty'], update: ['admin','hod','faculty'], delete: ['admin'] },
   timetable:        { read: ['admin','hod','faculty','student'], create: ['admin','hod'],        update: ['admin','hod'],              delete: ['admin'] },
-  'academic-years': { read: ['admin','hod','faculty','student'], create: ['admin'],             update: ['admin'],                    delete: ['admin'] },
-  notices:          { read: ['admin','hod','faculty','student'], create: ['admin','hod','faculty'], update: ['admin','hod','faculty'], delete: ['admin','hod'] },
+  'academic-years': { read: ['admin','faculty','student'], create: ['admin'],             update: ['admin'],                    delete: ['admin'] },
+  notices:          { read: ['admin','hod','faculty','student'], create: ['admin','hod','faculty'], update: ['admin','hod','faculty'], delete: ['admin','hod','faculty'] },
 }
 
 export function AuthProvider({ children }) {

@@ -37,7 +37,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_relativeSplatPath: true }}>
           <Routes>
             {/* Public routes */}
             <Route path='/login' element={<LoginPage />} />

@@ -368,6 +368,12 @@ export const forgotPassword = async (req, res) => {
     }
 
     const otp = generateOtp();
+    // Log OTP to backend terminal for testing purposes
+    console.log('=== PASSWORD RESET OTP ===');
+    console.log(`Email: ${user.email}`);
+    console.log(`OTP: ${otp}`);
+    console.log(`Expires in: ${process.env.PASSWORD_RESET_OTP_TTL_MINUTES || 10} minutes`);
+    console.log('===========================');
     const otpHash = hashOtp(otp);
     const expiryMinutes = Number(process.env.PASSWORD_RESET_OTP_TTL_MINUTES || 10);
 
@@ -416,7 +422,11 @@ export const forgotPassword = async (req, res) => {
       message: 'Password reset OTP sent to your email'
     };
 
-    if (isDebugOtpEnabled) {
+    // Include OTP in response for testing purposes (non-production)
+    if (process.env.NODE_ENV !== 'production') {
+      response.otp = otp;
+      response.note = 'OTP displayed for testing purposes only';
+    } else if (isDebugOtpEnabled) {
       response.debugOtp = otp;
     }
 

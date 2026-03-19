@@ -27,6 +27,9 @@ export const ROLES = Object.freeze({
 /** All authenticated roles (convenience shortcut) */
 export const ALL_ROLES = [ROLES.ADMIN, ROLES.HOD, ROLES.FACULTY, ROLES.STUDENT];
 
+/** Authenticated roles excluding HOD */
+const NON_HOD_ROLES = [ROLES.ADMIN, ROLES.FACULTY, ROLES.STUDENT];
+
 /** Staff roles – admin, hod & faculty */
 const STAFF = [ROLES.ADMIN, ROLES.HOD, ROLES.FACULTY];
 
@@ -51,7 +54,7 @@ export const ACCESS = Object.freeze({
   DEPARTMENT: {
     READ: ALL_ROLES,            // Everyone can view departments
     CREATE: ADMIN_ONLY,         // Only admin creates departments
-    UPDATE: MANAGEMENT,         // Admin & HOD can update their department
+    UPDATE: ADMIN_ONLY,         // Only admin updates department details
     DELETE: ADMIN_ONLY,         // Only admin deletes
     ASSIGN_HOD: ADMIN_ONLY,     // Only admin can assign/reassign HOD
   },
@@ -74,7 +77,7 @@ export const ACCESS = Object.freeze({
 
   // ─── Courses ──────────────────────────────
   COURSE: {
-    READ: ALL_ROLES,
+    READ: NON_HOD_ROLES,
     CREATE: ADMIN_ONLY,         // Only admin designs curriculum
     UPDATE: ADMIN_ONLY,
     DELETE: ADMIN_ONLY,
@@ -83,17 +86,17 @@ export const ACCESS = Object.freeze({
   // ─── Subjects ─────────────────────────────
   SUBJECT: {
     READ: ALL_ROLES,
-    CREATE: ADMIN_ONLY,
-    UPDATE: ADMIN_ONLY,
-    DELETE: ADMIN_ONLY,
+    CREATE: MANAGEMENT,
+    UPDATE: MANAGEMENT,
+    DELETE: MANAGEMENT,
   },
 
   // ─── Classes ──────────────────────────────
   CLASS: {
     READ: ALL_ROLES,
-    CREATE: ADMIN_ONLY,
+    CREATE: MANAGEMENT,
     UPDATE: MANAGEMENT,         // Admin & HOD can manage classes in their department
-    DELETE: ADMIN_ONLY,
+    DELETE: MANAGEMENT,
   },
 
   // ─── Attendance ───────────────────────────
@@ -106,7 +109,7 @@ export const ACCESS = Object.freeze({
 
   // ─── Academic Years ───────────────────────
   ACADEMIC_YEAR: {
-    READ: ALL_ROLES,
+    READ: NON_HOD_ROLES,
     CREATE: ADMIN_ONLY,         // Only admin manages academic calendar
     UPDATE: ADMIN_ONLY,
     DELETE: ADMIN_ONLY,
@@ -117,6 +120,6 @@ export const ACCESS = Object.freeze({
     READ: ALL_ROLES,            // Everyone reads notices
     CREATE: STAFF,              // Admin, HOD & faculty can post notices
     UPDATE: STAFF,              // Author or admin can edit
-    DELETE: ADMIN_ONLY,         // Only admin can delete any notice
+    DELETE: STAFF,              // Creator can delete own notice (admin can delete any)
   },
 });
