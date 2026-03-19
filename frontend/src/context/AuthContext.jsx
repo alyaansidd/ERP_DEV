@@ -82,16 +82,18 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = useCallback(async (email, password) => {
+    const normalizedEmail = String(email || '').trim().toLowerCase()
+
     // Try mock credentials first
-    if (MOCK_USERS[email]) {
-      const u = mockLogin(email, password)   // throws if wrong password
+    if (MOCK_USERS[normalizedEmail]) {
+      const u = mockLogin(normalizedEmail, password)   // throws if wrong password
       saveMockSession(u)
       setUser(u)
       return u
     }
     // Fall through to real backend
     try {
-      const { data } = await authApi.login({ email, password })
+      const { data } = await authApi.login({ email: normalizedEmail, password })
       setAccessToken(data.accessToken)
       setRefreshToken(data.refreshToken)
       setUser(data.user)

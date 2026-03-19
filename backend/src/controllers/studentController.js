@@ -151,7 +151,7 @@ export const createStudent = async (req, res) => {
       });
     }
 
-    const normalizedEmail = String(email).toLowerCase();
+    const normalizedEmail = String(email).trim().toLowerCase();
     const existingUser = await User.findOne({
       $or: [{ email: normalizedEmail }, { phoneNo }, { aadharNo }]
     });
@@ -340,7 +340,7 @@ export const updateStudent = async (req, res) => {
     }
 
     if (userData.email && userData.email !== userDoc.email) {
-      const normalizedEmail = String(userData.email).toLowerCase();
+      const normalizedEmail = String(userData.email).trim().toLowerCase();
       const existingEmail = await User.findOne({ email: normalizedEmail, _id: { $ne: userDoc._id } });
       if (existingEmail) {
         return res.status(409).json({

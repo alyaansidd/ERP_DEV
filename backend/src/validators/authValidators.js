@@ -21,12 +21,11 @@ export const registerValidator = [
     .isLength({ min: 3, max: 50 })
     .withMessage('Name must be between 3 and 50 characters'),
   body('email')
-    .trim()
+    .customSanitizer(normalizeEmailInput)
     .notEmpty()
     .withMessage('Email is required')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('password')
     .isString()
     .withMessage('Password must be a string')
@@ -61,8 +60,7 @@ export const loginValidator = [
     .withMessage('Email is required')
     .bail()
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('password')
     .isString()
     .withMessage('Password is required')
@@ -72,22 +70,20 @@ export const loginValidator = [
 
 export const forgotPasswordValidator = [
   body('email')
-    .trim()
+    .customSanitizer(normalizeEmailInput)
     .notEmpty()
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Please provide a valid email address')
-    .normalizeEmail()
 ];
 
 export const resetPasswordValidator = [
   body('email')
-    .trim()
+    .customSanitizer(normalizeEmailInput)
     .notEmpty()
     .withMessage('Email is required')
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .withMessage('Please provide a valid email address'),
   body('otp')
     .trim()
     .notEmpty()

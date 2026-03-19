@@ -145,14 +145,22 @@ export default function TimetablePage() {
   const dayLectures = useMemo(() => {
     const out = {}
     DAY_ORDER.forEach((day) => {
-      out[day] = Object.entries(normalizedSchedule[day] || {})
-        .sort(([a], [b]) => lectureSort(a, b))
-        .map(([slot, lecture]) => ({ slot, lecture }))
+      const dayMap = normalizedSchedule[day] || {}
+      out[day] = FIXED_LECTURE_POSITIONS.map((position) => {
+        const slotKey = String(position)
+        return {
+          slot: slotKey,
+          lecture: dayMap[slotKey] || null
+        }
+      })
     })
     return out
   }, [normalizedSchedule])
 
-  const getLectureByPosition = (day, position) => (dayLectures[day] || [])[position - 1] || null
+  const getLectureByPosition = (day, position) => {
+    const safeIndex = Math.max(0, position - 1)
+    return (dayLectures[day] || [])[safeIndex] || null
+  }
 
   const getSubjectName = (subjectId) => {
     const subject = subjectById[toId(subjectId)]
@@ -169,14 +177,12 @@ export default function TimetablePage() {
     return cls?.name || 'Class'
   }
 
-  const hasTimetable = DAY_ORDER.some((day) => (dayLectures[day] || []).length > 0)
   const showViewSwitch = userRole === 'admin' || userRole === 'hod'
-  const canEditGrid = userRole === 'admin'
+  const canEditGrid = userRole === 'admin' || userRole === 'hod'
 
   const upsertLectureByPosition = (schedule, day, position, lectureData) => {
     const dayMap = { ...(schedule[day] || {}) }
-    const sortedSlots = Object.keys(dayMap).sort(lectureSort)
-    const slotKey = sortedSlots[position - 1] || String(position)
+    const slotKey = String(position)
 
     if (lectureData) {
       dayMap[slotKey] = lectureData
@@ -350,7 +356,7 @@ export default function TimetablePage() {
     <>
       <PageHeader
         title='Class & Faculty Timetable'
-        subtitle='Live schedule matrix from database for classes and faculty routing.'
+        subtitle='Select by class or faculty. Admin and HOD can create/update slots directly in this matrix.'
       />
 
       <Card className={styles.controlCard}>
@@ -397,14 +403,6 @@ export default function TimetablePage() {
       <Card className={styles.boardCard} padding={false}>
         {loading ? (
           <Spinner />
-        ) : !hasTimetable ? (
-          <div className={styles.emptyWrap}>
-            <Empty
-              icon='📅'
-              title='No timetable available'
-              subtitle={view === 'class' ? 'Assign class timetable from Classes module.' : 'No routing assigned for selected faculty.'}
-            />
-          </div>
         ) : (
           <div className={styles.gridWrap}>
             <div className={styles.boardTitle}>
@@ -492,7 +490,7 @@ export default function TimetablePage() {
             </div>
 
             <div className={styles.editorActions}>
-              <Button onClick={handleSave} loading={saving}>Save</Button>
+              <Button onClick={handleSave} loading={saving}>Create / Update</Button>
               <Button variant='danger' onClick={handleClear} disabled={saving}>Clear Slot</Button>
               <Button variant='secondary' onClick={cancelEdit} disabled={saving}>Cancel</Button>
             </div>

@@ -37,6 +37,8 @@ const hashOtp = (otp) => {
   return crypto.createHash('sha256').update(otp).digest('hex');
 };
 
+const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const issueAuthTokens = async (user) => {
   const accessToken = generateAccessToken(user._id, user.role);
   const refreshToken = generateRefreshToken(user._id);
@@ -77,6 +79,7 @@ const buildAuthResponse = (user, accessToken, refreshToken, message) => {
 export const register = async (req, res) => {
   try {
     const { name, email, password, role, phoneNo, aadharNo, dob } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
     // Validation
     if (!name || !email || !password || !phoneNo || !aadharNo || !dob || !role) {
@@ -88,10 +91,10 @@ export const register = async (req, res) => {
 
     // Check if user already exists (email, phone, or aadhar)
     const existingUser = await User.findOne({
-      $or: [{ email }, { phoneNo }, { aadharNo }]
+      $or: [{ email: normalizedEmail }, { phoneNo }, { aadharNo }]
     });
     if (existingUser) {
-      const field = existingUser.email === email.toLowerCase() ? 'email'
+      const field = existingUser.email === normalizedEmail ? 'email'
         : existingUser.phoneNo === phoneNo ? 'phone number'
         : 'Aadhar number';
       return res.status(409).json({
@@ -103,7 +106,7 @@ export const register = async (req, res) => {
     // Create new user
     const newUser = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
       role,
       phoneNo,
@@ -165,7 +168,15 @@ export const login = async (req, res) => {
     }
 
     // Find user (include password field for comparison)
-    const user = await User.findOne({ email: normalizedEmail }).select('+password +refreshTokens');
+    let user = await User.findOne({ email: normalizedEmail }).select('+password +refreshTokens');
+
+    // Fallback for legacy records that may contain accidental surrounding spaces in email.
+    if (!user && normalizedEmail) {
+      const escapedEmail = escapeRegex(normalizedEmail);
+      user = await User.findOne({
+        email: { $regex: `^\\s*${escapedEmail}\\s*$`, $options: 'i' }
+      }).select('+password +refreshTokens');
+    }
 
     if (!user) {
       return res.status(401).json({

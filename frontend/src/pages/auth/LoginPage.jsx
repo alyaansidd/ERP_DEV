@@ -60,9 +60,9 @@ export default function LoginPage() {
             </thead>
             <tbody>
               <tr><td>Admin</td><td>test.admin01@example.com</td><td>pass@123</td></tr>
-              <tr><td>HOD</td><td>test.hod@example.com</td><td>pass123</td></tr>
-              <tr><td>Faculty</td><td>faculty3@example.com</td><td>pass123</td></tr>
-              <tr><td>Student</td><td>test.student1@example.com</td><td>pass123</td></tr>
+              <tr><td>HOD</td><td>test.faculty@example.com</td><td>pass123</td></tr>
+              <tr><td>Faculty</td><td>test.faculty02@example.com</td><td>pass123</td></tr>
+              <tr><td>Student</td><td>test.student.example01@gmail.com</td><td>pass123</td></tr>
             </tbody>
           </table>
           <div className={styles.hintSub}>Replace with your real backend at <code>http://localhost:5000</code></div>
