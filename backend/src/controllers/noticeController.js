@@ -3,6 +3,21 @@ import User from '../models/User.js';
 import Department from '../models/Department.js';
 import { getScopedDepartmentId } from '../utils/hodScope.js';
 
+const getVisibleNoticeRoles = (userRole) => {
+  switch (userRole) {
+    case 'admin':
+      return ['all', 'student', 'faculty', 'hod'];
+    case 'hod':
+      return ['all', 'faculty', 'hod'];
+    case 'faculty':
+      return ['all', 'faculty'];
+    case 'student':
+      return ['all', 'student'];
+    default:
+      return ['all'];
+  }
+};
+
 /**
  * Get all notices
  * @route GET /api/notices
@@ -10,13 +25,17 @@ import { getScopedDepartmentId } from '../utils/hodScope.js';
 export const getAllNotices = async (req, res) => {
   try {
     const { targetRole } = req.query;
-    let filter = {};
+    const visibleRoles = getVisibleNoticeRoles(req.user?.role);
+    let filter = { targetRole: { $in: visibleRoles } };
 
     const scopedDepartmentId = await getScopedDepartmentId(req);
     if (scopedDepartmentId) {
       filter = {
+        targetRole: { $in: visibleRoles },
         $or: [
           { departmentId: scopedDepartmentId },
+          { departmentId: { $exists: false } },
+          { departmentId: null },
           { targetRole: 'all' }
         ]
       };
@@ -24,6 +43,14 @@ export const getAllNotices = async (req, res) => {
     
     // Filter by target role if specified
     if (targetRole && targetRole !== 'all') {
+      if (!visibleRoles.includes(targetRole)) {
+        return res.status(200).json({
+          success: true,
+          count: 0,
+          data: []
+        });
+      }
+
       filter = {
         ...filter,
         targetRole
@@ -69,9 +96,19 @@ export const getNoticeById = async (req, res) => {
         message: 'Notice not found'
       });
     }
+
+    const visibleRoles = getVisibleNoticeRoles(req.user?.role);
+    if (!visibleRoles.includes(notice.targetRole || 'all')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. This notice is not visible for your role.'
+      });
+    }
     
     const scopedDepartmentId = await getScopedDepartmentId(req);
-    if (scopedDepartmentId && String(notice.departmentId?._id || notice.departmentId || '') !== scopedDepartmentId) {
+    const noticeDepartmentId = String(notice.departmentId?._id || notice.departmentId || '');
+    const isGlobalNotice = !noticeDepartmentId;
+    if (scopedDepartmentId && !isGlobalNotice && noticeDepartmentId !== scopedDepartmentId) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. HOD can only access notices from their assigned department'
@@ -251,8 +288,7 @@ export const updateNotice = async (req, res) => {
 /**
  * Delete notice
  * @route DELETE /api/notices/:id
- * Access: admin only (middleware enforced)
- * Additional: Creator can also delete their own notice
+ * Access: creator only
  */
 export const deleteNotice = async (req, res) => {
   try {
@@ -272,14 +308,12 @@ export const deleteNotice = async (req, res) => {
       });
     }
 
-    // Allow deletion if user is admin OR is the notice creator
-    const isAdmin = req.user?.role === 'admin';
     const isCreator = String(notice.postedBy) === String(req.user?.id);
 
-    if (!isAdmin && !isCreator) {
+    if (!isCreator) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Only the notice creator or admin can delete this notice.'
+        message: 'Access denied. Only the notice creator can delete this notice.'
       });
     }
 

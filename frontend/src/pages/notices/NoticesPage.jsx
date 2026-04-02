@@ -8,21 +8,25 @@ import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import styles from './Notices.module.css'
 
-function NoticeForm({ data, onChange }) {
+function NoticeForm({ data, onChange, audienceOptions }) {
   return (
     <>
       <Input label='Title' name='title' value={data.title} onChange={onChange} required />
       <Input label='Description' name='description' type='textarea' value={data.description} onChange={onChange} />
       <Input
-        label='Target Audience' name='targetRole' type='select' value={data.targetRole} onChange={onChange}
-        options={[{ value: 'all', label: 'Everyone' }, { value: 'student', label: 'Students' }, { value: 'faculty', label: 'Faculty' }]}
+        label='Target Audience'
+        name='targetRole'
+        type='select'
+        value={data.targetRole}
+        onChange={onChange}
+        options={audienceOptions}
       />
     </>
   )
 }
 
 export default function NoticesPage() {
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const { data: rows = [], isLoading } = useList('notices', noticesApi.getAll)
   const { create, update, remove } = useCrud('notices', noticesApi)
 
@@ -31,9 +35,45 @@ export default function NoticesPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
-  function setField(n, v) { setForm((p) => ({ ...p, [n]: v })) }
-  function openCreate() { setForm({ targetRole: 'all' }); setSaveError(''); setModal({ type: 'create' }) }
-  function openEdit(n) { setForm({ ...n }); setSaveError(''); setModal({ type: 'edit', item: n }) }
+  const audienceOptions = [
+    { value: 'all', label: 'Everyone' },
+    { value: 'student', label: 'Students' },
+    { value: 'faculty', label: 'Faculty' },
+    ...(user?.role === 'admin' ? [{ value: 'hod', label: 'HODs' }] : []),
+  ]
+
+  function getPostedById(postedBy) {
+    if (!postedBy) return ''
+    if (typeof postedBy === 'string') return postedBy
+    return postedBy._id || postedBy.id || ''
+  }
+
+  function canEditNotice(notice) {
+    if (!can('notices', 'update')) return false
+    return String(getPostedById(notice?.postedBy)) === String(user?._id || user?.id || '')
+  }
+
+  function canDeleteNotice(notice) {
+    if (!can('notices', 'delete')) return false
+    return String(getPostedById(notice?.postedBy)) === String(user?._id || user?.id || '')
+  }
+
+  function setField(name, value) {
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  function openCreate() {
+    setForm({ targetRole: 'all' })
+    setSaveError('')
+    setModal({ type: 'create' })
+  }
+
+  function openEdit(notice) {
+    setForm({ ...notice })
+    setSaveError('')
+    setModal({ type: 'edit', item: notice })
+  }
+
   function postedByLabel(postedBy) {
     if (!postedBy) return ''
     if (typeof postedBy === 'string') return postedBy
@@ -41,39 +81,62 @@ export default function NoticesPage() {
   }
 
   async function handleSave() {
-    setSaving(true); setSaveError('')
+    setSaving(true)
+    setSaveError('')
     try {
-      if (modal.type === 'create') await create.mutateAsync(form)
-      else await update.mutateAsync({ id: modal.item._id || modal.item.id, body: form })
+      if (modal.type === 'create') {
+        await create.mutateAsync(form)
+      } else {
+        await update.mutateAsync({ id: modal.item._id || modal.item.id, body: form })
+      }
       setModal(null)
-    } catch (e) { setSaveError(e.response?.data?.message || e.message) }
-    finally { setSaving(false) }
+    } catch (e) {
+      setSaveError(e.response?.data?.message || e.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <>
-      <PageHeader title='📢 Notices' subtitle='Institution-wide announcements'>
-        {can('notices', 'create') && <Button onClick={openCreate}>+ Post Notice</Button>}
+      <PageHeader title='Notices' subtitle='Institution-wide announcements'>
+        {can('notices', 'create') && <Button onClick={openCreate}>Post Notice</Button>}
       </PageHeader>
 
       {isLoading ? <Spinner /> :
-        rows.length === 0 ? <Empty icon='📢' title='No notices posted yet' /> :
-        rows.map((n) => (
-          <div key={n._id || n.id} className={styles.card}>
+        rows.length === 0 ? <Empty icon='Notice' title='No notices posted yet' /> :
+        rows.map((notice) => (
+          <div key={notice._id || notice.id} className={styles.card}>
             <div className={styles.cardTop}>
-              <h3 className={styles.title}>{n.title}</h3>
+              <h3 className={styles.title}>{notice.title}</h3>
               <div className={styles.cardActions}>
-                {can('notices', 'update') && <Button variant='secondary' size='sm' onClick={() => openEdit(n)}>✏️ Edit</Button>}
-                {can('notices', 'delete') && (
-                  <Button variant='danger' size='sm' onClick={() => remove.mutate(n._id || n.id)}>🗑️</Button>
+                {canEditNotice(notice) && (
+                  <Button
+                    variant='secondary'
+                    size='sm'
+                    className={styles.actionButton}
+                    onClick={() => openEdit(notice)}
+                  >
+                    Edit
+                  </Button>
+                )}
+                {canDeleteNotice(notice) && (
+                  <Button
+                    variant='danger'
+                    size='sm'
+                    className={`${styles.actionButton} ${styles.deleteButton}`}
+                    onClick={() => remove.mutate(notice._id || notice.id)}
+                  >
+                    Delete
+                  </Button>
                 )}
               </div>
             </div>
-            <p className={styles.desc}>{n.description}</p>
+            <p className={styles.desc}>{notice.description}</p>
             <div className={styles.meta}>
-              <Badge role={n.targetRole || 'all'} />
-              {n.postedBy && <span className={styles.by}>By: {postedByLabel(n.postedBy)}</span>}
-              {n.createdAt && <span className={styles.date}>{new Date(n.createdAt).toLocaleDateString()}</span>}
+              <Badge role={notice.targetRole || 'all'} />
+              {notice.postedBy && <span className={styles.by}>By: {postedByLabel(notice.postedBy)}</span>}
+              {notice.createdAt && <span className={styles.date}>{new Date(notice.createdAt).toLocaleDateString()}</span>}
             </div>
           </div>
         ))
@@ -91,7 +154,7 @@ export default function NoticesPage() {
           }
         >
           <Alert type='error' message={saveError} />
-          <NoticeForm data={form} onChange={setField} />
+          <NoticeForm data={form} onChange={setField} audienceOptions={audienceOptions} />
         </Modal>
       )}
     </>
