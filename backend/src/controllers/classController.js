@@ -2,6 +2,7 @@ import Class from '../models/Class.js';
 import Department from '../models/Department.js';
 import Faculty from '../models/Faculty.js';
 import Student from '../models/Student.js';
+import { getFacultyAssignedClassIds, getFacultyScope, mapToObject } from '../utils/facultyScope.js';
 import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
 
 /** Consistent populate for Class queries */
@@ -14,38 +15,6 @@ const populateClass = (query) =>
       populate: { path: 'userId', select: 'name' }
     })
     .populate('studentIds', 'rollNo userId');
-
-const isPlainObject = (value) => {
-  if (!value || typeof value !== 'object') return false;
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-};
-
-const mapToObject = (value, seen = new WeakSet()) => {
-  if (value == null) return value;
-  if (typeof value !== 'object') return value;
-
-  if (seen.has(value)) return {};
-  seen.add(value);
-
-  if (value instanceof Map) {
-    const out = {};
-    for (const [key, nested] of value.entries()) {
-      out[key] = mapToObject(nested, seen);
-    }
-    return out;
-  }
-
-  if (!isPlainObject(value)) {
-    return value;
-  }
-
-  const out = {};
-  for (const [key, nested] of Object.entries(value)) {
-    out[key] = mapToObject(nested, seen);
-  }
-  return out;
-};
 
 const extractAssignments = (timeTable) => {
   const tableObj = mapToObject(timeTable);
@@ -114,8 +83,17 @@ const syncFacultyRoutingForClass = async (classId, previousTimeTable, nextTimeTa
  */
 export const getAllClasses = async (req, res) => {
   try {
+    const facultyScope = await getFacultyScope(req);
     const scopedDepartmentId = await getScopedDepartmentId(req);
-    const filter = scopedDepartmentId ? { departmentId: scopedDepartmentId } : {};
+    let filter = {};
+
+    if (facultyScope) {
+      const classIds = getFacultyAssignedClassIds(facultyScope);
+      filter = classIds.length > 0 ? { _id: { $in: classIds } } : { _id: null };
+    } else if (scopedDepartmentId) {
+      filter = { departmentId: scopedDepartmentId };
+    }
+
     const classes = await populateClass(Class.find(filter));
 
     return res.status(200).json({
@@ -149,6 +127,17 @@ export const getClassById = async (req, res) => {
         success: false,
         message: 'Class not found'
       });
+    }
+
+    const facultyScope = await getFacultyScope(req);
+    if (facultyScope) {
+      const assignedClassIds = getFacultyAssignedClassIds(facultyScope);
+      if (!assignedClassIds.includes(String(classDoc._id))) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Faculty can only access classes assigned in their routing'
+        });
+      }
     }
 
     const isAllowed = await isDepartmentAllowedForHod(req, classDoc.departmentId?._id || classDoc.departmentId);

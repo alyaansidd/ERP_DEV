@@ -8,6 +8,7 @@ export default function AppLayout() {
   const { user, loading, can } = useAuth()
   const { pathname } = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const facultyAllowedPrefixes = ['/', '/attendance', '/timetable', '/profile', '/notices']
 
   const protectedRoutes = [
     { prefix: '/departments', resource: 'departments', action: 'read' },
@@ -43,6 +44,17 @@ export default function AppLayout() {
   }
 
   if (!user) return <Navigate to='/login' replace />
+
+  if (
+    user.role === 'faculty' &&
+    !facultyAllowedPrefixes.some((prefix) => (
+      prefix === '/'
+        ? pathname === '/'
+        : pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ))
+  ) {
+    return <Navigate to='/attendance' replace />
+  }
 
   const routeRule = protectedRoutes.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
   if (routeRule && !can(routeRule.resource, routeRule.action)) {

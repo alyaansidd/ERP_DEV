@@ -27,6 +27,12 @@ const attendanceSchema = new mongoose.Schema(
       required: true
     },
 
+    lectureNo: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
     date: {
       type: Date,
       required: true
@@ -37,9 +43,9 @@ const attendanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Prevent duplicate attendance for same class + subject + date
+// Prevent duplicate attendance for same class + subject + lecture + date
 attendanceSchema.index(
-  { classId: 1, subjectId: 1, date: 1 },
+  { classId: 1, subjectId: 1, lectureNo: 1, date: 1 },
   { unique: true }
 );
 

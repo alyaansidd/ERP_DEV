@@ -1,6 +1,7 @@
 import Faculty from '../models/Faculty.js';
 import User from '../models/User.js';
 import Department from '../models/Department.js';
+import { getFacultyScope } from '../utils/facultyScope.js';
 import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
 
 /** Consistent populate for Faculty queries */
@@ -15,8 +16,16 @@ const populateFaculty = (query) =>
  */
 export const getAllFaculty = async (req, res) => {
   try {
+    const facultyScope = await getFacultyScope(req);
     const scopedDepartmentId = await getScopedDepartmentId(req);
-    const filter = scopedDepartmentId ? { departmentId: scopedDepartmentId } : {};
+    let filter = {};
+
+    if (facultyScope) {
+      filter = { _id: facultyScope._id };
+    } else if (scopedDepartmentId) {
+      filter = { departmentId: scopedDepartmentId };
+    }
+
     const faculty = await populateFaculty(Faculty.find(filter));
 
     return res.status(200).json({
@@ -49,6 +58,14 @@ export const getFacultyById = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Faculty not found'
+      });
+    }
+
+    const facultyScope = await getFacultyScope(req);
+    if (facultyScope && String(faculty._id) !== String(facultyScope._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Faculty can only access their own faculty profile'
       });
     }
 
@@ -342,6 +359,20 @@ export const updateFaculty = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Faculty not found'
+      });
+    }
+
+    const facultyScope = await getFacultyScope(req);
+    if (facultyScope && String(existingFaculty._id) !== String(facultyScope._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Faculty can only update their own faculty profile'
+      });
+    }
+    if (facultyScope) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Faculty profile updates are restricted to management users'
       });
     }
 

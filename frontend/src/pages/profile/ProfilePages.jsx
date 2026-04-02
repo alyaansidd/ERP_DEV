@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { authApi } from '../../api/services'
+import { authApi, facultyApi } from '../../api/services'
+import { useList } from '../../hooks/useCrud'
 import { PageHeader, Card, Alert, Badge } from '../../components/ui/Misc'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -121,6 +122,8 @@ export function RegisterPage() {
 
 export function ProfilePage() {
   const { user } = useAuth()
+  const { data: faculty = [] } = useList('faculty', facultyApi.getAll)
+  const myFacultyProfile = faculty[0] || null
   const fields = [
     ['Email', user?.email],
     ['Phone', user?.phoneNo],
@@ -146,6 +149,26 @@ export function ProfilePage() {
             <span className={styles.val}>{value}</span>
           </div>
         ))}
+        {myFacultyProfile && (
+          <>
+            <div className={styles.row}>
+              <span className={styles.key}>Employee No</span>
+              <span className={styles.val}>{myFacultyProfile.employeeNo || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Designation</span>
+              <span className={styles.val}>{myFacultyProfile.designation || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Department</span>
+              <span className={styles.val}>{myFacultyProfile.departmentId?.name || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Joining Date</span>
+              <span className={styles.val}>{myFacultyProfile.joiningDate ? new Date(myFacultyProfile.joiningDate).toLocaleDateString() : '-'}</span>
+            </div>
+          </>
+        )}
       </Card>
     </>
   )
