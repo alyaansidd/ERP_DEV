@@ -126,7 +126,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title={`Welcome, ${user?.name || 'User'}`}
+        title={role === 'hod' && hodDepartments[0]?.name ? `Welcome, ${hodDepartments[0].name}` : `Welcome, ${user?.name || 'User'}`}
         subtitle={`${roleLabels[role] || 'User'} • ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
       />
 

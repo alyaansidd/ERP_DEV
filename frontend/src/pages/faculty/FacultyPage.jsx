@@ -6,6 +6,13 @@ import { facultyApi, departmentsApi } from '../../api/services'
 
 const toId = (value) => (value && typeof value === 'object' ? (value._id || value.id || '') : (value || ''))
 
+function countRoutingSlots(routing) {
+  return Object.values(routing || {}).reduce(
+    (count, dayMap) => count + Object.keys(dayMap || {}).length,
+    0
+  )
+}
+
 function FacultyForm({ data, onChange, departments }) {
   const isEdit = Boolean(data._id || data.id)
 
@@ -53,22 +60,24 @@ function FacultyForm({ data, onChange, departments }) {
 }
 
 export default function FacultyPage() {
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const { data: departments = [] } = useList('departments', departmentsApi.getAll)
   const FormComponent = (props) => <FacultyForm {...props} departments={departments} />
+  const isFacultyView = user?.role === 'faculty'
 
   return (
     <CrudPage
-      title='Faculty'
-      icon='👩‍🏫'
+      title={isFacultyView ? 'My Faculty Profile' : 'Faculty'}
+      icon='Faculty'
       resource='faculty'
       apiService={facultyApi}
       columns={[
-        { key: 'userId', label: 'Name', render: (v) => v?.name || '—' },
+        { key: 'userId', label: 'Name', render: (v) => v?.name || '-' },
         { key: 'employeeNo', label: 'Employee No' },
         { key: 'designation', label: 'Designation' },
-        { key: 'departmentId', label: 'Department', render: (v) => v?.name || '—' },
-        { key: 'joiningDate', label: 'Joining Date', render: (v) => (v ? new Date(v).toLocaleDateString() : '—') },
+        { key: 'departmentId', label: 'Department', render: (v) => v?.name || '-' },
+        { key: 'joiningDate', label: 'Joining Date', render: (v) => (v ? new Date(v).toLocaleDateString() : '-') },
+        { key: 'routing', label: 'Routing Slots', render: (v) => countRoutingSlots(v) },
       ]}
       FormComponent={FormComponent}
       defaultValues={{
@@ -102,7 +111,7 @@ export default function FacultyPage() {
         joiningDate: form.joiningDate,
       })}
       canCreate={can('faculty', 'create')}
-      canEdit={can('faculty', 'update')}
+      canEdit={can('faculty', 'update') && !isFacultyView}
       canDelete={can('faculty', 'delete')}
     />
   )

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Attendance from '../models/Attendance.js';
 
 const resolveMongoUri = () => {
   return process.env.MONGO_URI || process.env.MONGODB_URI || '';
@@ -58,6 +59,25 @@ const dropLegacyClassCompositeIndex = async () => {
   }
 };
 
+const dropLegacyAttendanceIndex = async () => {
+  try {
+    const attendanceCollection = mongoose.connection.collection('attendances');
+    const indexes = await attendanceCollection.indexes();
+    const hasLegacyAttendanceIndex = indexes.some(
+      (index) => index?.name === 'classId_1_subjectId_1_date_1'
+    );
+
+    if (!hasLegacyAttendanceIndex) {
+      return;
+    }
+
+    await attendanceCollection.dropIndex('classId_1_subjectId_1_date_1');
+    console.log('Dropped legacy index attendances.classId_1_subjectId_1_date_1');
+  } catch (error) {
+    console.warn('Could not drop legacy attendances.classId_1_subjectId_1_date_1 index:', error.message);
+  }
+};
+
 const connectDB = async () => {
   const mongoUri = resolveMongoUri();
 
@@ -74,6 +94,8 @@ const connectDB = async () => {
     await dropLegacySubjectCodeIndex();
     await dropLegacyStudentUserIndex();
     await dropLegacyClassCompositeIndex();
+    await dropLegacyAttendanceIndex();
+    await Attendance.syncIndexes();
 
     console.log('MongoDB connected');
     return true;

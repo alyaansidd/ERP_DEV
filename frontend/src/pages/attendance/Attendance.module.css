@@ -1,3 +1,85 @@
+.assignmentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.assignmentCard {
+  text-align: left;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--bd);
+  background: linear-gradient(180deg, #ffffff 0%, var(--s2) 100%);
+  cursor: pointer;
+  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+
+.assignmentCard:hover {
+  border-color: rgba(37,99,235,.35);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15,23,42,.08);
+}
+
+.assignmentCardActive {
+  border-color: var(--ac);
+  box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+}
+
+.assignmentTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.assignmentTags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.assignmentClass {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tx);
+}
+
+.assignmentLecture {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ac);
+  background: rgba(37,99,235,.1);
+  border-radius: 999px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.assignmentMarked {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f5132;
+  background: rgba(63,214,138,.18);
+  border-radius: 999px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.assignmentSubject {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tx);
+  margin-bottom: 4px;
+}
+
+.assignmentMeta {
+  font-size: 12px;
+  color: var(--tx2);
+  margin-top: 3px;
+}
+
 .row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 0; border-bottom: 1px solid var(--bd);
@@ -21,6 +103,9 @@
 .aOn { background: var(--dg) !important; color: #fff !important; border-color: var(--dg) !important; }
 
 @media (max-width: 768px) {
+  .assignmentGrid {
+    grid-template-columns: 1fr;
+  }
   .row {
     align-items: flex-start;
     flex-direction: column;
