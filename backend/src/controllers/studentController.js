@@ -2,7 +2,11 @@ import Student from '../models/Student.js';
 import User from '../models/User.js';
 import Class from '../models/Class.js';
 import Course from '../models/Course.js';
+import Faculty from '../models/Faculty.js';
+import Subject from '../models/Subject.js';
+import AcademicYear from '../models/AcedemicYear.js';
 import { getScopedDepartmentId, isDepartmentAllowedForHod } from '../utils/hodScope.js';
+import { mapToObject } from '../utils/facultyScope.js';
 
 const USER_FIELDS = ['name', 'email', 'password', 'phoneNo', 'aadharNo', 'dob', 'role'];
 const STUDENT_FIELDS = ['rollNo', 'classId', 'departmentId', 'program', 'fatherName', 'fatherNo'];
@@ -61,12 +65,178 @@ const ensureCourseExists = async (courseId) => {
   return Course.findById(courseId);
 };
 
+const findStudentByUserId = (userId) =>
+  Student.findOne({ userId })
+    .populate('userId', 'name email phoneNo dob')
+    .populate('departmentId', 'name code')
+    .populate('program', 'name code semester credits');
+
+const formatFaculty = (faculty) => {
+  if (!faculty) return null;
+  return {
+    id: faculty._id,
+    employeeNo: faculty.employeeNo,
+    designation: faculty.designation,
+    name: faculty.userId?.name || null
+  };
+};
+
+const buildDashboardTimetable = async (classDoc) => {
+  const timeTable = mapToObject(classDoc?.timeTable) || {};
+  const subjectIds = new Set();
+  const facultyIds = new Set();
+
+  Object.values(timeTable).forEach((lectureMap) => {
+    Object.values(lectureMap || {}).forEach((lecture) => {
+      if (lecture?.subjectId) subjectIds.add(String(lecture.subjectId));
+      if (lecture?.facultyId) facultyIds.add(String(lecture.facultyId));
+    });
+  });
+
+  const [subjects, facultyDocs] = await Promise.all([
+    Subject.find({ _id: { $in: [...subjectIds] } }).select('name subjectCode credit'),
+    Faculty.find({ _id: { $in: [...facultyIds] } })
+      .select('employeeNo designation userId')
+      .populate('userId', 'name')
+  ]);
+
+  const subjectMap = new Map(subjects.map((subject) => [String(subject._id), subject]));
+  const facultyMap = new Map(facultyDocs.map((faculty) => [String(faculty._id), faculty]));
+  const assignedCourses = [];
+  const seenAssignments = new Set();
+  const timetable = {};
+
+  Object.entries(timeTable).forEach(([day, lectureMap]) => {
+    timetable[day] = {};
+
+    Object.entries(lectureMap || {}).forEach(([lectureNo, lecture]) => {
+      const subject = lecture?.subjectId ? subjectMap.get(String(lecture.subjectId)) : null;
+      const faculty = lecture?.facultyId ? facultyMap.get(String(lecture.facultyId)) : null;
+
+      timetable[day][lectureNo] = {
+        lectureNo,
+        subject: subject
+          ? {
+              id: subject._id,
+              name: subject.name,
+              subjectCode: subject.subjectCode,
+              credit: subject.credit
+            }
+          : null,
+        faculty: formatFaculty(faculty)
+      };
+
+      if (!subject) return;
+
+      const assignmentKey = `${subject._id}:${faculty?._id || 'none'}`;
+      if (seenAssignments.has(assignmentKey)) return;
+      seenAssignments.add(assignmentKey);
+
+      assignedCourses.push({
+        subject: {
+          id: subject._id,
+          name: subject.name,
+          subjectCode: subject.subjectCode,
+          credit: subject.credit
+        },
+        faculty: formatFaculty(faculty)
+      });
+    });
+  });
+
+  return { timetable, assignedCourses };
+};
+
+export const getMyStudentDashboard = async (req, res) => {
+  try {
+    const student = await findStudentByUserId(req.user.id);
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student profile not found for this user'
+      });
+    }
+
+    const classDoc = await Class.findById(student.classId)
+      .populate('departmentId', 'name code')
+      .populate({
+        path: 'coordinatorId',
+        select: 'employeeNo designation userId',
+        populate: { path: 'userId', select: 'name' }
+      });
+
+    const academicYearDoc = await AcademicYear.findOne().sort({ year: -1 }).select('year');
+    const { timetable, assignedCourses } = await buildDashboardTimetable(classDoc);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        student: {
+          id: student._id,
+          name: student.userId?.name || null,
+          email: student.userId?.email || null,
+          phoneNo: student.userId?.phoneNo || null,
+          dob: student.userId?.dob || null,
+          rollNo: student.rollNo,
+          fatherName: student.fatherName,
+          fatherNo: student.fatherNo,
+          academicYear: academicYearDoc?.year || null,
+          department: student.departmentId
+            ? {
+                id: student.departmentId._id,
+                name: student.departmentId.name,
+                code: student.departmentId.code
+              }
+            : null,
+          class: classDoc
+            ? {
+                id: classDoc._id,
+                name: classDoc.name,
+                roomNo: classDoc.roomNo,
+                semester: classDoc.semester
+              }
+            : null,
+          program: student.program
+            ? {
+                id: student.program._id,
+                name: student.program.name,
+                code: student.program.code,
+                semester: student.program.semester,
+                credits: student.program.credits
+              }
+            : null,
+          coordinator: formatFaculty(classDoc?.coordinatorId)
+        },
+        assignedCourses,
+        timetable
+      }
+    });
+  } catch (error) {
+    console.error('Get my student dashboard error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error retrieving student dashboard'
+    });
+  }
+};
+
 /**
  * Get all students
  * @route GET /api/students
  */
 export const getAllStudents = async (req, res) => {
   try {
+    if (req.user.role === 'student') {
+      const student = await populateStudent(Student.findOne({ userId: req.user.id }));
+
+      return res.status(200).json({
+        success: true,
+        count: student ? 1 : 0,
+        data: student ? [student] : []
+      });
+    }
+
     const scopedDepartmentId = await getScopedDepartmentId(req);
     const filter = scopedDepartmentId ? { departmentId: scopedDepartmentId } : {};
     const students = await populateStudent(Student.find(filter));
@@ -100,6 +270,13 @@ export const getStudentById = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Student not found'
+      });
+    }
+
+    if (req.user.role === 'student' && String(student.userId?._id || student.userId) !== String(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Students can only access their own profile'
       });
     }
 

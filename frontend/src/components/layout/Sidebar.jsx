@@ -19,11 +19,13 @@ const NAV = [
   { to: '/attendance', icon: 'AT', label: 'Attendance', resource: 'attendance' },
   { to: '/timetable', icon: 'TT', label: 'Timetable', resource: 'timetable' },
   { section: 'Account' },
+  { to: '/academic-details', icon: 'AD', label: 'Academic Details', resource: 'students' },
   { to: '/register', icon: 'RG', label: 'Register User', resource: 'register', action: 'create' },
   { to: '/profile', icon: 'PR', label: 'My Profile' },
 ]
 
 const FACULTY_ALLOWED_PATHS = new Set(['/', '/attendance', '/timetable', '/profile', '/notices'])
+const STUDENT_ALLOWED_PATHS = new Set(['/', '/attendance', '/timetable', '/profile', '/notices', '/academic-details'])
 
 export default function Sidebar({ isOpen, onClose }) {
   const { user, logout, can } = useAuth()
@@ -42,6 +44,7 @@ export default function Sidebar({ isOpen, onClose }) {
             const hasVisibleLinkAfterSection = NAV.slice(i + 1).some((candidate) => {
               if (candidate.section) return false
               if (user?.role === 'faculty' && !FACULTY_ALLOWED_PATHS.has(candidate.to)) return false
+              if (user?.role === 'student' && !STUDENT_ALLOWED_PATHS.has(candidate.to)) return false
               if (candidate.resource && !can(candidate.resource, candidate.action || 'read')) return false
               return true
             })
@@ -50,6 +53,7 @@ export default function Sidebar({ isOpen, onClose }) {
           }
 
           if (user?.role === 'faculty' && !FACULTY_ALLOWED_PATHS.has(item.to)) return null
+          if (user?.role === 'student' && !STUDENT_ALLOWED_PATHS.has(item.to)) return null
           if (item.resource && !can(item.resource, item.action || 'read')) return null
 
           return (

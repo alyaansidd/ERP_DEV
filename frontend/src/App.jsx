@@ -18,6 +18,7 @@ import CoursesPage from './pages/courses/CoursesPage'
 import SubjectsPage from './pages/subjects/SubjectsPage'
 import ClassesPage from './pages/classes/ClassesPage'
 import AcademicYearsPage from './pages/academic-years/AcademicYearsPage'
+import AcademicDetailsPage from './pages/academic-details/AcademicDetailsPage'
 import AttendancePage from './pages/attendance/AttendancePage'
 import NoticesPage from './pages/notices/NoticesPage'
 import TimetablePage from './pages/timetable/TimetablePage'
@@ -54,6 +55,7 @@ export default function App() {
               <Route path='/subjects'        element={<SubjectsPage />} />
               <Route path='/classes'         element={<ClassesPage />} />
               <Route path='/academic-years'  element={<AcademicYearsPage />} />
+              <Route path='/academic-details' element={<AcademicDetailsPage />} />
               <Route path='/attendance'      element={<AttendancePage />} />
               <Route path='/timetable'       element={<TimetablePage />} />
               <Route path='/notices'         element={<NoticesPage />} />

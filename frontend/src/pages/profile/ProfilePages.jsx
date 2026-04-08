@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { authApi, facultyApi } from '../../api/services'
+import { authApi, facultyApi, studentsApi } from '../../api/services'
 import { useList } from '../../hooks/useCrud'
 import { PageHeader, Card, Alert, Badge } from '../../components/ui/Misc'
 import Button from '../../components/ui/Button'
@@ -122,8 +122,12 @@ export function RegisterPage() {
 
 export function ProfilePage() {
   const { user } = useAuth()
-  const { data: faculty = [] } = useList('faculty', facultyApi.getAll)
-  const myFacultyProfile = faculty[0] || null
+  const isFaculty = user?.role === 'faculty'
+  const isStudent = user?.role === 'student'
+  const { data: faculty = [] } = useList('faculty-profile', facultyApi.getAll)
+  const { data: students = [] } = useList('student-profile', studentsApi.getAll)
+  const myFacultyProfile = isFaculty ? (faculty[0] || null) : null
+  const myStudentProfile = isStudent ? (students[0] || null) : null
   const fields = [
     ['Email', user?.email],
     ['Phone', user?.phoneNo],
@@ -166,6 +170,34 @@ export function ProfilePage() {
             <div className={styles.row}>
               <span className={styles.key}>Joining Date</span>
               <span className={styles.val}>{myFacultyProfile.joiningDate ? new Date(myFacultyProfile.joiningDate).toLocaleDateString() : '-'}</span>
+            </div>
+          </>
+        )}
+        {myStudentProfile && (
+          <>
+            <div className={styles.row}>
+              <span className={styles.key}>Roll No</span>
+              <span className={styles.val}>{myStudentProfile.rollNo || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Department</span>
+              <span className={styles.val}>{myStudentProfile.departmentId?.name || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Class</span>
+              <span className={styles.val}>{myStudentProfile.classId?.name || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Program</span>
+              <span className={styles.val}>{myStudentProfile.program?.name || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Father Name</span>
+              <span className={styles.val}>{myStudentProfile.fatherName || '-'}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>Father No</span>
+              <span className={styles.val}>{myStudentProfile.fatherNo || '-'}</span>
             </div>
           </>
         )}

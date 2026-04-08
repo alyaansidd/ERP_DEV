@@ -26,7 +26,10 @@ export const departmentsApi    = {
   ...crudService('departments'),
   assignHod: (data) => apiClient.post('/departments/assign-hod', data),
 }
-export const studentsApi       = crudService('students')
+export const studentsApi       = {
+  ...crudService('students'),
+  getMyDashboard: () => apiClient.get('/students/me/dashboard'),
+}
 export const facultyApi        = crudService('faculty')
 export const coursesApi        = crudService('courses')
 export const subjectsApi       = crudService('subjects')
