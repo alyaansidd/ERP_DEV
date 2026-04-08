@@ -87,7 +87,10 @@ export const getAllClasses = async (req, res) => {
     const scopedDepartmentId = await getScopedDepartmentId(req);
     let filter = {};
 
-    if (facultyScope) {
+    if (req.user.role === 'student') {
+      const student = await Student.findOne({ userId: req.user.id }).select('classId');
+      filter = student?.classId ? { _id: student.classId } : { _id: null };
+    } else if (facultyScope) {
       const classIds = getFacultyAssignedClassIds(facultyScope);
       filter = classIds.length > 0 ? { _id: { $in: classIds } } : { _id: null };
     } else if (scopedDepartmentId) {
@@ -127,6 +130,16 @@ export const getClassById = async (req, res) => {
         success: false,
         message: 'Class not found'
       });
+    }
+
+    if (req.user.role === 'student') {
+      const student = await Student.findOne({ userId: req.user.id }).select('classId');
+      if (!student || String(student.classId) !== String(classDoc._id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Students can only access their assigned class'
+        });
+      }
     }
 
     const facultyScope = await getFacultyScope(req);

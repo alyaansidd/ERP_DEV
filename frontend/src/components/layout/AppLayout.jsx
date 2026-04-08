@@ -9,6 +9,7 @@ export default function AppLayout() {
   const { pathname } = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const facultyAllowedPrefixes = ['/', '/attendance', '/timetable', '/profile', '/notices']
+  const studentAllowedPrefixes = ['/', '/attendance', '/timetable', '/profile', '/notices', '/academic-details']
 
   const protectedRoutes = [
     { prefix: '/departments', resource: 'departments', action: 'read' },
@@ -18,6 +19,7 @@ export default function AppLayout() {
     { prefix: '/subjects', resource: 'subjects', action: 'read' },
     { prefix: '/classes', resource: 'classes', action: 'read' },
     { prefix: '/academic-years', resource: 'academic-years', action: 'read' },
+    { prefix: '/academic-details', resource: 'students', action: 'read' },
     { prefix: '/attendance', resource: 'attendance', action: 'read' },
     { prefix: '/timetable', resource: 'timetable', action: 'read' },
     { prefix: '/notices', resource: 'notices', action: 'read' },
@@ -54,6 +56,17 @@ export default function AppLayout() {
     ))
   ) {
     return <Navigate to='/attendance' replace />
+  }
+
+  if (
+    user.role === 'student' &&
+    !studentAllowedPrefixes.some((prefix) => (
+      prefix === '/'
+        ? pathname === '/'
+        : pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ))
+  ) {
+    return <Navigate to='/' replace />
   }
 
   const routeRule = protectedRoutes.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))

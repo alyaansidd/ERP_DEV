@@ -29,12 +29,50 @@ const normalizeAttendanceDate = (value) => {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 };
 
+const findStudentForUser = (userId) => Student.findOne({ userId }).select('_id classId');
+
+const limitAttendanceToStudent = (attendanceDoc, studentId) => {
+  if (!attendanceDoc) return attendanceDoc;
+  const record = Array.isArray(attendanceDoc.record) ? attendanceDoc.record : [];
+  const ownRecord = record.filter((entry) => String(entry.studentId?._id || entry.studentId) === String(studentId));
+  return {
+    ...attendanceDoc.toObject(),
+    record: ownRecord
+  };
+};
+
 /**
  * Get all attendance records
  * @route GET /api/attendance
  */
 export const getAllAttendance = async (req, res) => {
   try {
+    if (req.user.role === 'student') {
+      const student = await findStudentForUser(req.user.id);
+      if (!student) {
+        return res.status(200).json({
+          success: true,
+          count: 0,
+          data: []
+        });
+      }
+
+      const attendance = await populateAttendance(
+        Attendance.find({
+          classId: student.classId,
+          'record.studentId': student._id
+        })
+      );
+
+      const ownAttendance = attendance.map((doc) => limitAttendanceToStudent(doc, student._id));
+
+      return res.status(200).json({
+        success: true,
+        count: ownAttendance.length,
+        data: ownAttendance
+      });
+    }
+
     const facultyScope = await getFacultyScope(req);
     const scopedDepartmentId = await getScopedDepartmentId(req);
 
@@ -90,6 +128,25 @@ export const getAttendanceById = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Attendance record not found'
+      });
+    }
+
+    if (req.user.role === 'student') {
+      const student = await findStudentForUser(req.user.id);
+      const ownRecord = attendance.record?.some(
+        (entry) => String(entry.studentId?._id || entry.studentId) === String(student?._id)
+      );
+
+      if (!student || !ownRecord) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Students can only access their own attendance'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: limitAttendanceToStudent(attendance, student._id)
       });
     }
 

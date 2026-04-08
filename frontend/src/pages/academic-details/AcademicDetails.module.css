@@ -1,0 +1,85 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.infoItem {
+  padding: 12px;
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  background: var(--s2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoItem span,
+.facultyMeta,
+.courseMeta,
+.courseFaculty {
+  color: var(--tx2);
+}
+
+.facultyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  background: var(--s2);
+}
+
+.facultyName {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.courseList {
+  display: flex;
+  flex-direction: column;
+}
+
+.courseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--bd);
+}
+
+.courseRow:last-child {
+  border-bottom: none;
+}
+
+.courseTitle {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.courseFaculty {
+  text-align: right;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+}
