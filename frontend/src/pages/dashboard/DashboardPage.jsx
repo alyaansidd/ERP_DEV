@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { StatCard, PageHeader, Card, CardHeader, Empty, Spinner, Badge } from '../../components/ui/Misc'
-import { departmentsApi, studentsApi, facultyApi, coursesApi, subjectsApi, classesApi, noticesApi, attendanceApi } from '../../api/services'
+import { departmentsApi, studentsApi, facultyApi, coursesApi, subjectsApi, classesApi, noticesApi, attendanceApi, attendanceSessionsApi } from '../../api/services'
 import styles from './Dashboard.module.css'
+import Button from '../../components/ui/Button'
+import toast from 'react-hot-toast'
 
 const ALL_STATS = [
   { key: 'students', label: 'Students', icon: 'ST', color: '#2563eb', bg: 'rgba(37,99,235,.08)', api: studentsApi },
@@ -70,11 +72,572 @@ const getArray = (payload) => {
   return firstArray || []
 }
 
-function StudentDashboard({ dashboard, quickLinks }) {
+const toId = (value) => {
+  if (!value) return ''
+  if (typeof value === 'object') return String(value._id || value.id || '')
+  return String(value)
+}
+
+const extractAssignedLectures = (routing) => {
+  const entries = []
+
+  Object.entries(routing || {}).forEach(([day, lectureMap]) => {
+    Object.entries(lectureMap || {}).forEach(([lectureNo, lecture]) => {
+      const classId = toId(lecture?.classId)
+      if (!classId) return
+
+      entries.push({
+        day,
+        lectureNo: String(lectureNo),
+        classId,
+        subjectId: toId(lecture?.subjectId),
+      })
+    })
+  })
+
+  return entries
+}
+
+const normalizeDayToken = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (!raw) return ''
+
+  const map = {
+    sun: 'sun', sunday: 'sun',
+    mon: 'mon', monday: 'mon',
+    tue: 'tue', tues: 'tue', tuesday: 'tue',
+    wed: 'wed', wednesday: 'wed',
+    thu: 'thu', thur: 'thu', thurs: 'thu', thursday: 'thu',
+    fri: 'fri', friday: 'fri',
+    sat: 'sat', saturday: 'sat',
+  }
+
+  return map[raw] || raw.slice(0, 3)
+}
+
+const getCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    return Promise.reject(new Error('Geolocation is not supported in this browser'))
+  }
+
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+      },
+      () => reject(new Error('Unable to fetch your current location')),
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0,
+      }
+    )
+  })
+}
+
+function FacultySessionManager({ user }) {
+  const [facultyRows, setFacultyRows] = useState([])
+  const [classRows, setClassRows] = useState([])
+  const [subjectRows, setSubjectRows] = useState([])
+  const [activeSessions, setActiveSessions] = useState([])
+  const [selectedLectureKey, setSelectedLectureKey] = useState('')
+  const [durationMinutes, setDurationMinutes] = useState(3)
+  const [radiusMeters, setRadiusMeters] = useState(6)
+  const [isLocationLoading, setIsLocationLoading] = useState(false)
+  const [facultyLocation, setFacultyLocation] = useState(null)
+  const [loadingSessions, setLoadingSessions] = useState(true)
+  const [creatingSession, setCreatingSession] = useState(false)
+  const [endingSessionId, setEndingSessionId] = useState('')
+  const [nowTs, setNowTs] = useState(Date.now())
+  const [recentMarks, setRecentMarks] = useState([])
+
+  const userId = String(user?.id || user?._id || '')
+  const myFaculty = useMemo(
+    () => facultyRows.find((item) => toId(item.userId) === userId) || facultyRows[0] || null,
+    [facultyRows, userId]
+  )
+
+  const assignedLectures = useMemo(
+    () => extractAssignedLectures(myFaculty?.routing || {}),
+    [myFaculty]
+  )
+
+  const todayToken = useMemo(
+    () => normalizeDayToken(new Date().toLocaleDateString('en-US', { weekday: 'short' })),
+    []
+  )
+
+  const todayLectures = useMemo(
+    () => assignedLectures.filter((lecture) => normalizeDayToken(lecture.day) === todayToken),
+    [assignedLectures, todayToken]
+  )
+
+  const lectureOptions = useMemo(() => {
+    return todayLectures
+      .map((lecture) => {
+        const classDoc = classRows.find((item) => toId(item) === lecture.classId)
+        const subjectDoc = subjectRows.find((item) => toId(item) === lecture.subjectId)
+        if (!classDoc) return null
+
+        return {
+          key: `${lecture.day}-${lecture.lectureNo}-${lecture.classId}-${lecture.subjectId}`,
+          classId: lecture.classId,
+          subjectId: lecture.subjectId,
+          lectureNo: lecture.lectureNo,
+          className: classDoc.name || '-',
+          semester: classDoc.semester || '-',
+          roomNo: classDoc.roomNo || '-',
+          subjectName: subjectDoc?.name || 'Subject',
+          subjectCode: subjectDoc?.subjectCode || '-',
+        }
+      })
+      .filter(Boolean)
+  }, [todayLectures, classRows, subjectRows])
+
+  const selectedLecture = useMemo(
+    () => lectureOptions.find((item) => item.key === selectedLectureKey) || null,
+    [lectureOptions, selectedLectureKey]
+  )
+
+  const fetchActiveSessions = async () => {
+    setLoadingSessions(true)
+    try {
+      const { data } = await attendanceSessionsApi.getActive()
+      setActiveSessions(getArray(data))
+    } catch {
+      setActiveSessions([])
+    } finally {
+      setLoadingSessions(false)
+    }
+  }
+
+  useEffect(() => {
+    Promise.all([facultyApi.getAll(), classesApi.getAll(), subjectsApi.getAll()])
+      .then(([facultyRes, classRes, subjectRes]) => {
+        setFacultyRows(getArray(facultyRes?.data))
+        setClassRows(getArray(classRes?.data))
+        setSubjectRows(getArray(subjectRes?.data))
+      })
+      .catch(() => {
+        setFacultyRows([])
+        setClassRows([])
+        setSubjectRows([])
+      })
+  }, [])
+
+  useEffect(() => {
+    fetchActiveSessions()
+  }, [])
+
+  useEffect(() => {
+    const stream = attendanceSessionsApi.streamEvents({
+      onMessage: (payload) => {
+        if (!payload || payload.type !== 'attendance_marked') return
+
+        setRecentMarks((prev) => [
+          {
+            id: `${payload.sessionId}-${payload.studentId}-${payload.markedAt}`,
+            className: payload.className || 'Class',
+            lectureNo: payload.lectureNo,
+            studentName: payload.studentName || 'Student',
+            studentRollNo: payload.studentRollNo || '-',
+            markedAt: payload.markedAt,
+            markedCount: payload.markedCount,
+          },
+          ...prev,
+        ].slice(0, 8))
+
+        fetchActiveSessions()
+      },
+    })
+
+    return () => {
+      if (stream) stream.close()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!lectureOptions.length) {
+      setSelectedLectureKey('')
+      return
+    }
+
+    const exists = lectureOptions.some((option) => option.key === selectedLectureKey)
+    if (!exists) setSelectedLectureKey(lectureOptions[0].key)
+  }, [lectureOptions, selectedLectureKey])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowTs(Date.now())
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [])
+
+  async function captureFacultyLocation() {
+    setIsLocationLoading(true)
+    try {
+      const location = await getCurrentLocation()
+      setFacultyLocation(location)
+      toast.success('Current location captured successfully')
+    } catch (error) {
+      toast.error(error.message || 'Unable to fetch location')
+    } finally {
+      setIsLocationLoading(false)
+    }
+  }
+
+  async function createSession() {
+    if (!selectedLecture) {
+      toast.error('Select class and lecture first')
+      return
+    }
+
+    if (!facultyLocation) {
+      toast.error('Capture your location before starting session')
+      return
+    }
+
+    const parsedDuration = Number(durationMinutes)
+    const parsedRadius = Number(radiusMeters)
+
+    if (!Number.isFinite(parsedDuration) || parsedDuration <= 0) {
+      toast.error('Session duration must be greater than 0 minutes')
+      return
+    }
+
+    if (!Number.isFinite(parsedRadius) || parsedRadius <= 0) {
+      toast.error('Radius must be greater than 0 meters')
+      return
+    }
+
+    const start = new Date()
+    const end = new Date(start.getTime() + parsedDuration * 60 * 1000)
+
+    setCreatingSession(true)
+    try {
+      await attendanceSessionsApi.start({
+        classId: selectedLecture.classId,
+        subjectId: selectedLecture.subjectId,
+        lectureNo: selectedLecture.lectureNo,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        radiusMeters: parsedRadius,
+        facultyLocation,
+      })
+      toast.success('Attendance session started')
+      fetchActiveSessions()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to start session')
+    } finally {
+      setCreatingSession(false)
+    }
+  }
+
+  async function endSession(sessionId) {
+    setEndingSessionId(sessionId)
+    try {
+      await attendanceSessionsApi.end(sessionId)
+      toast.success('Session ended')
+      fetchActiveSessions()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to end session')
+    } finally {
+      setEndingSessionId('')
+    }
+  }
+
+  return (
+    <div className={styles.sessionWrap}>
+      <Card>
+        <CardHeader title='Start Attendance Session' />
+        {lectureOptions.length === 0 ? (
+          <Empty
+            title='No class assigned for today'
+            subtitle='No routed lectures are assigned for today in your faculty timetable.'
+            icon='AT'
+          />
+        ) : (
+          <>
+            <div className={styles.todayLectureGrid}>
+              {lectureOptions.map((option) => {
+                const active = option.key === selectedLectureKey
+                return (
+                  <button
+                    key={option.key}
+                    type='button'
+                    className={[styles.todayLectureCard, active ? styles.todayLectureCardActive : ''].join(' ')}
+                    onClick={() => setSelectedLectureKey(option.key)}
+                  >
+                    <div className={styles.todayLectureTop}>
+                      <span className={styles.todayClassName}>{option.className}</span>
+                      <span className={styles.todayLectureTag}>Lecture {option.lectureNo}</span>
+                    </div>
+                    <div className={styles.todayMeta}>Semester {option.semester}</div>
+                    <div className={styles.todaySubjectName}>{option.subjectName}</div>
+                    <div className={styles.todayMeta}>Code: {option.subjectCode}</div>
+                    <div className={styles.todayMeta}>Room: {option.roomNo}</div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className={styles.sessionFormGrid}>
+              <label className={styles.fieldLabel}>
+                Session Time (minutes)
+                <input
+                  type='number'
+                  min='1'
+                  value={durationMinutes}
+                  onChange={(event) => setDurationMinutes(event.target.value)}
+                  className={styles.fieldInput}
+                />
+              </label>
+
+              <label className={styles.fieldLabel}>
+                Radius (meters)
+                <input
+                  type='number'
+                  min='1'
+                  value={radiusMeters}
+                  onChange={(event) => setRadiusMeters(event.target.value)}
+                  className={styles.fieldInput}
+                />
+              </label>
+
+              <div className={styles.fieldReadOnly}>
+                <span className={styles.fieldReadOnlyLabel}>Selected Lecture</span>
+                <strong>{selectedLecture?.className || '-'} | Lecture {selectedLecture?.lectureNo || '-'}</strong>
+                <span>{selectedLecture?.subjectName || '-'}</span>
+              </div>
+            </div>
+
+            <div className={styles.sessionActions}>
+              <Button variant='secondary' onClick={captureFacultyLocation} loading={isLocationLoading}>
+                Capture Faculty Location
+              </Button>
+              <Button onClick={createSession} loading={creatingSession}>
+                Start Session
+              </Button>
+            </div>
+
+            {facultyLocation && (
+              <p className={styles.geoLine}>
+                Location: {facultyLocation.latitude.toFixed(6)}, {facultyLocation.longitude.toFixed(6)}
+              </p>
+            )}
+          </>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader title='Active Sessions' />
+        {loadingSessions ? (
+          <Spinner />
+        ) : activeSessions.length === 0 ? (
+          <Empty title='No active session' subtitle='Start a session to allow students to verify and mark attendance.' icon='AT' />
+        ) : (
+          <>
+            {recentMarks.length > 0 && (
+              <div className={styles.liveMarksPanel}>
+                <div className={styles.liveMarksTitle}>Live Marks</div>
+                <div className={styles.liveMarksList}>
+                  {recentMarks.map((item) => (
+                    <div key={item.id} className={styles.liveMarkRow}>
+                      <span>{item.className} | Lecture {item.lectureNo}</span>
+                      <span>{item.studentName} | Roll No: {item.studentRollNo}</span>
+                      <span>Total Marked: {item.markedCount}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.sessionList}>
+              {activeSessions.map((session) => {
+                const sessionId = toId(session)
+                const remaining = Math.max(0, Math.floor((new Date(session.endTime).getTime() - nowTs) / 1000))
+                const isOwnSession = toId(session.startedByFacultyId?.userId) === userId || toId(session.startedByFacultyId) === toId(myFaculty)
+                const markedStudentNames = (session.markedStudents || [])
+                  .map((entry) => {
+                    const name = entry?.studentId?.userId?.name || 'Student'
+                    const rollNo = entry?.studentId?.rollNo || '-'
+                    return `${name} (${rollNo})`
+                  })
+                  .filter(Boolean)
+
+                return (
+                  <div key={sessionId} className={styles.sessionCard}>
+                    <div className={styles.sessionTop}>
+                      <strong>{session.classId?.name || 'Class'}</strong>
+                      <span className={styles.sessionTimer}>{remaining}s left</span>
+                    </div>
+                    <p className={styles.sessionMeta}>Subject: {session.subjectId?.name || '-'} | Lecture {session.lectureNo || '-'}</p>
+                    <p className={styles.sessionMeta}>Radius: {session.radiusMeters || '-'} m | Marked: {session.markedStudents?.length || 0}</p>
+                    {markedStudentNames.length > 0 && (
+                      <p className={styles.sessionMeta}>Students: {markedStudentNames.join(', ')}</p>
+                    )}
+                    <div className={styles.sessionActions}>
+                      <Button
+                        variant='danger'
+                        onClick={() => endSession(sessionId)}
+                        loading={endingSessionId === sessionId}
+                        disabled={!isOwnSession}
+                      >
+                        End Session
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+function StudentSessionPanel({ onMarked }) {
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [processingSessionId, setProcessingSessionId] = useState('')
+  const [verifyMap, setVerifyMap] = useState({})
+  const [nowTs, setNowTs] = useState(Date.now())
+
+  const fetchSessions = async () => {
+    setLoading(true)
+    try {
+      const { data } = await attendanceSessionsApi.getActive()
+      setSessions(getArray(data))
+    } catch {
+      setSessions([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSessions()
+
+    const poller = window.setInterval(fetchSessions, 15000)
+    const timer = window.setInterval(() => setNowTs(Date.now()), 1000)
+
+    return () => {
+      window.clearInterval(poller)
+      window.clearInterval(timer)
+    }
+  }, [])
+
+  async function verifySession(sessionId) {
+    setProcessingSessionId(sessionId)
+    try {
+      const location = await getCurrentLocation()
+      const { data } = await attendanceSessionsApi.verify(sessionId, location)
+      const verifyData = data?.data || {}
+      setVerifyMap((prev) => ({ ...prev, [sessionId]: verifyData }))
+      if (verifyData.canMark) toast.success('Verified: You can mark attendance now')
+      else toast.error('Verification failed: Out of range or session closed')
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Verification failed')
+    } finally {
+      setProcessingSessionId('')
+    }
+  }
+
+  async function markSession(sessionId) {
+    setProcessingSessionId(sessionId)
+    try {
+      const location = await getCurrentLocation()
+      await attendanceSessionsApi.mark(sessionId, location)
+      toast.success('Attendance marked successfully')
+      setVerifyMap((prev) => ({
+        ...prev,
+        [sessionId]: {
+          ...(prev[sessionId] || {}),
+          canMark: false,
+          alreadyMarked: true,
+          inRange: true,
+        }
+      }))
+      fetchSessions()
+      if (typeof onMarked === 'function') onMarked()
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Unable to mark attendance')
+    } finally {
+      setProcessingSessionId('')
+    }
+  }
+
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <CardHeader title='Live Attendance Sessions' />
+      {loading ? (
+        <Spinner />
+      ) : sessions.length === 0 ? (
+        <Empty
+          title='No active session right now'
+          subtitle='When faculty starts attendance for your class, it will appear here with countdown.'
+          icon='AT'
+        />
+      ) : (
+        <div className={styles.sessionList}>
+          {sessions.map((session) => {
+            const sessionId = toId(session)
+            const verifyState = verifyMap[sessionId]
+            const remaining = verifyState?.remainingSeconds ?? Math.max(0, Math.floor((new Date(session.endTime).getTime() - nowTs) / 1000))
+            const canMark = Boolean(verifyState?.canMark)
+            const alreadyMarked = Boolean(verifyState?.alreadyMarked)
+            const inRange = verifyState?.inRange
+
+            return (
+              <div key={sessionId} className={styles.sessionCard}>
+                <div className={styles.sessionTop}>
+                  <strong>{session.subjectId?.name || 'Subject'}</strong>
+                  <span className={styles.sessionTimer}>{remaining}s left</span>
+                </div>
+                <p className={styles.sessionMeta}>Class: {session.classId?.name || '-'} | Lecture {session.lectureNo || '-'}</p>
+                <p className={styles.sessionMeta}>Allowed Radius: {session.radiusMeters || '-'} m</p>
+                {verifyState && (
+                  <p className={styles.sessionMeta}>
+                    Distance: {verifyState.distanceMeters || '-'} m | In range: {String(inRange)} | Marked: {String(alreadyMarked)}
+                  </p>
+                )}
+                <div className={styles.sessionActions}>
+                  <Button
+                    variant='secondary'
+                    onClick={() => verifySession(sessionId)}
+                    loading={processingSessionId === sessionId}
+                  >
+                    Verify
+                  </Button>
+                  <Button
+                    onClick={() => markSession(sessionId)}
+                    disabled={!canMark || alreadyMarked}
+                    loading={processingSessionId === sessionId}
+                  >
+                    Mark Attendance
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function StudentDashboard({ dashboard, quickLinks, onMarked }) {
   const summary = dashboard?.attendanceSummary || { totalClasses: 0, presentClasses: 0, absentClasses: 0, percentage: 0 }
 
   return (
     <>
+      <StudentSessionPanel onMarked={onMarked} />
+
       <Card>
         <CardHeader title='All Attendance' />
         <div className={styles.attendanceSummary}>
@@ -113,7 +676,12 @@ export default function DashboardPage() {
   const [hodDepartments, setHodDepartments] = useState([])
   const [studentDashboard, setStudentDashboard] = useState(null)
   const [studentLoad, setStudentLoad] = useState(role === 'student')
+  const [studentRefreshKey, setStudentRefreshKey] = useState(0)
   const [nLoad, setNLoad] = useState(true)
+
+  const refreshStudentDashboard = () => {
+    setStudentRefreshKey((value) => value + 1)
+  }
 
   useEffect(() => {
     if (role !== 'student') {
@@ -167,7 +735,7 @@ export default function DashboardPage() {
       setNoticeTotal(arr.length)
       setNotices(arr.slice(0, 4))
     }).catch(() => {}).finally(() => setNLoad(false))
-  }, [role])
+  }, [role, studentRefreshKey])
 
   const hodDetailStats = useMemo(() => ([
     { label: 'Faculties', value: counts.faculty ?? 0 },
@@ -199,6 +767,7 @@ export default function DashboardPage() {
           <StudentDashboard
             dashboard={studentDashboard}
             quickLinks={quickLinks}
+            onMarked={refreshStudentDashboard}
           />
         )
       ) : (
@@ -210,6 +779,8 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
+
+          {role === 'faculty' && <FacultySessionManager user={user} />}
 
           {role === 'hod' && (
             <Card style={{ marginBottom: 16 }}>

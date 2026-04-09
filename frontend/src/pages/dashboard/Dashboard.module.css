@@ -5,6 +5,220 @@
   margin-bottom: 22px;
 }
 
+.sessionWrap {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sessionFormGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.todayLectureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.todayLectureCard {
+  text-align: left;
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--s2) 100%);
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.todayLectureCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37,99,235,.36);
+  box-shadow: 0 10px 24px rgba(15,23,42,.08);
+}
+
+.todayLectureCardActive {
+  border-color: var(--ac);
+  box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+}
+
+.todayLectureTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.todayClassName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tx);
+  min-width: 0;
+}
+
+.todayLectureTag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ac);
+  background: rgba(37,99,235,.1);
+  border-radius: 999px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.todaySubjectName {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tx);
+  margin: 3px 0;
+}
+
+.todayMeta {
+  font-size: 12px;
+  color: var(--tx2);
+  margin-top: 3px;
+}
+
+.fieldReadOnly {
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  background: var(--s2);
+  color: var(--tx);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  min-width: 0;
+}
+
+.fieldReadOnlyLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tx2);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--tx2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fieldInput {
+  width: 100%;
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  background: var(--s2);
+  color: var(--tx);
+  font-size: 13px;
+  padding: 9px 10px;
+}
+
+.fieldInput:focus {
+  outline: none;
+  border-color: var(--ac);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+
+.sessionActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sessionActions > * {
+  min-width: 0;
+}
+
+.geoLine {
+  margin-top: 10px;
+  margin-bottom: 0;
+  font-size: 12px;
+  color: var(--tx2);
+}
+
+.sessionList {
+  display: grid;
+  gap: 10px;
+}
+
+.sessionCard {
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  padding: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--s2) 100%);
+}
+
+.sessionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sessionTimer {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ac);
+  background: rgba(37,99,235,.1);
+  border-radius: 999px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.sessionMeta {
+  margin: 6px 0;
+  font-size: 12px;
+  color: var(--tx2);
+}
+
+.liveMarksPanel {
+  margin-bottom: 12px;
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  background: var(--s2);
+  padding: 10px;
+}
+
+.liveMarksTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tx);
+  margin-bottom: 8px;
+}
+
+.liveMarksList {
+  display: grid;
+  gap: 6px;
+}
+
+.liveMarkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--tx2);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  background: #fff;
+  padding: 7px 8px;
+}
+
 .summaryCard {
   padding: 14px;
   border-radius: var(--r);
@@ -281,7 +495,7 @@
 
 @media (max-width: 768px) {
   .statsGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 10px;
     margin-bottom: 16px;
   }
@@ -290,12 +504,72 @@
     grid-template-columns: 1fr;
   }
 
+  .sessionFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .todayLectureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sessionActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sessionActions > * {
+    width: 100%;
+  }
+
+  .sessionTop {
+    align-items: flex-start;
+  }
+
+  .liveMarkRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sessionTimer {
+    margin-top: 2px;
+  }
+
   .deptStatsGrid {
     grid-template-columns: repeat(2, minmax(90px, 1fr));
   }
 
   .attendanceSummary,
   .infoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .sessionCard,
+  .summaryCard,
+  .deptStatItem,
+  .quickBtn,
+  .todayLectureCard {
+    padding: 10px;
+  }
+
+  .todayClassName,
+  .subjectName,
+  .noticeTitle {
+    font-size: 14px;
+  }
+
+  .todayLectureTag,
+  .sessionTimer {
+    font-size: 11px;
+    padding: 3px 7px;
+  }
+
+  .attendanceSummary {
+    gap: 8px;
+  }
+
+  .deptStatsGrid {
     grid-template-columns: 1fr;
   }
 }
