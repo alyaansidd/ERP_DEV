@@ -4,14 +4,68 @@ import { useList } from '../../hooks/useCrud'
 import { attendanceApi, classesApi, facultyApi, subjectsApi } from '../../api/services'
 import { Alert, Card, CardHeader, Empty, PageHeader, Spinner } from '../../components/ui/Misc'
 import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
+import Modal from '../../components/ui/Modal'
 import styles from './Attendance.module.css'
 import toast from 'react-hot-toast'
+
+const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const toId = (value) => {
   if (!value) return ''
   if (typeof value === 'object') return String(value._id || value.id || '')
   return String(value)
+}
+
+const formatDateKey = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toISOString().split('T')[0]
+}
+
+const formatFullDate = (value) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
+}
+
+const getMonthLabel = (value) => {
+  const date = new Date(value)
+  return date.toLocaleDateString('en-IN', {
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+function buildCalendarDays(monthValue, entryByDate) {
+  const monthDate = new Date(monthValue)
+  const year = monthDate.getFullYear()
+  const month = monthDate.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const startDay = firstDay.getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells = []
+
+  for (let index = 0; index < startDay; index += 1) {
+    cells.push({ key: `empty-${index}`, empty: true })
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(year, month, day)
+    const dateKey = formatDateKey(date)
+    cells.push({
+      key: dateKey,
+      day,
+      dateKey,
+      entry: entryByDate[dateKey] || null
+    })
+  }
+
+  return cells
 }
 
 function extractAssignedLectures(routing) {
@@ -53,6 +107,8 @@ export default function AttendancePage() {
   const [record, setRecord] = useState({})
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [selectedSubjectId, setSelectedSubjectId] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState('')
 
   const isFaculty = user?.role === 'faculty'
   const myFaculty = useMemo(() => {
@@ -68,6 +124,62 @@ export default function AttendancePage() {
     () => Object.fromEntries(subjects.map((subject) => [toId(subject), subject])),
     [subjects]
   )
+  const studentAttendanceCards = useMemo(() => {
+    if (isFaculty) return []
+
+    const summaryBySubject = attendanceRecords.reduce((acc, attendance) => {
+      const subjectDoc = attendance?.subjectId
+      const subjectKey = toId(subjectDoc)
+      if (!subjectKey) return acc
+
+      const ownStatus = attendance?.record?.[0]?.status
+      if (!acc[subjectKey]) {
+        acc[subjectKey] = {
+          id: subjectKey,
+          name: subjectDoc?.name || subjectById[subjectKey]?.name || 'Subject',
+          code: subjectDoc?.subjectCode || subjectDoc?.code || subjectById[subjectKey]?.subjectCode || '-',
+          totalLectures: 0,
+          presentLectures: 0,
+          attendanceEntries: []
+        }
+      }
+
+      const dateKey = formatDateKey(attendance?.date)
+      acc[subjectKey].totalLectures += 1
+      if (ownStatus === 'P') acc[subjectKey].presentLectures += 1
+      acc[subjectKey].attendanceEntries.push({
+        id: attendance?._id || `${subjectKey}-${dateKey}-${attendance?.lectureNo || ''}`,
+        date: attendance?.date,
+        dateKey,
+        lectureNo: attendance?.lectureNo || '-',
+        status: ownStatus || 'A'
+      })
+      return acc
+    }, {})
+
+    return Object.values(summaryBySubject)
+      .map((item) => ({
+        ...item,
+        attendanceEntries: item.attendanceEntries.sort((a, b) => new Date(a.date) - new Date(b.date)),
+        percentage: item.totalLectures ? Math.round((item.presentLectures / item.totalLectures) * 100) : 0
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [attendanceRecords, isFaculty, subjectById])
+  const selectedStudentSubject = useMemo(
+    () => studentAttendanceCards.find((subject) => subject.id === selectedSubjectId) || null,
+    [selectedSubjectId, studentAttendanceCards]
+  )
+  const selectedSubjectEntryByDate = useMemo(() => {
+    if (!selectedStudentSubject) return {}
+    return selectedStudentSubject.attendanceEntries.reduce((acc, entry) => {
+      if (entry.dateKey) acc[entry.dateKey] = entry
+      return acc
+    }, {})
+  }, [selectedStudentSubject])
+  const calendarDays = useMemo(
+    () => (calendarMonth ? buildCalendarDays(calendarMonth, selectedSubjectEntryByDate) : []),
+    [calendarMonth, selectedSubjectEntryByDate]
+  )
 
   const assignedClasses = useMemo(() => {
     if (!isFaculty) return classes
@@ -75,10 +187,6 @@ export default function AttendancePage() {
     return classes.filter((classDoc) => assignedClassIds.has(toId(classDoc)))
   }, [assignedLectures, classes, isFaculty])
 
-  const selectedClass = useMemo(
-    () => assignedClasses.find((classDoc) => toId(classDoc) === String(classId)) || null,
-    [assignedClasses, classId]
-  )
   const normalizedSelectedDate = useMemo(
     () => new Date(date).toISOString().split('T')[0],
     [date]
@@ -124,16 +232,6 @@ export default function AttendancePage() {
     [facultyLectureCards, selectedLectureKey]
   )
 
-  const subjectOptions = useMemo(() => {
-    if (!isFaculty) {
-      return subjects.map((subject) => ({
-        value: toId(subject),
-        label: subject.name || subject.code || 'Subject'
-      }))
-    }
-    return []
-  }, [isFaculty, subjects])
-
   useEffect(() => {
     if (!isFaculty) return
     if (!facultyLectureCards.length) {
@@ -153,17 +251,6 @@ export default function AttendancePage() {
       setLectureNo(firstLecture.lectureNo)
     }
   }, [facultyLectureCards, isFaculty, selectedLectureKey])
-
-  useEffect(() => {
-    if (isFaculty) return
-    if (!subjectOptions.length) {
-      setSubjectId('')
-      return
-    }
-
-    const isValid = subjectOptions.some((option) => option.value === String(subjectId))
-    if (!isValid) setSubjectId(subjectOptions[0].value)
-  }, [isFaculty, subjectId, subjectOptions])
 
   useEffect(() => {
     if (!classId) {
@@ -191,6 +278,28 @@ export default function AttendancePage() {
     setClassId(lecture.classId)
     setSubjectId(lecture.subjectId)
     setLectureNo(lecture.lectureNo)
+  }
+
+  function openSubjectCalendar(subject) {
+    setSelectedSubjectId(subject.id)
+    const latestDate = subject.attendanceEntries.at(-1)?.date || new Date().toISOString()
+    const monthStart = new Date(latestDate)
+    monthStart.setDate(1)
+    monthStart.setHours(0, 0, 0, 0)
+    setCalendarMonth(monthStart.toISOString())
+  }
+
+  function closeSubjectCalendar() {
+    setSelectedSubjectId('')
+    setCalendarMonth('')
+  }
+
+  function changeCalendarMonth(offset) {
+    if (!calendarMonth) return
+    const nextMonth = new Date(calendarMonth)
+    nextMonth.setMonth(nextMonth.getMonth() + offset)
+    nextMonth.setDate(1)
+    setCalendarMonth(nextMonth.toISOString())
   }
 
   async function submit() {
@@ -240,7 +349,7 @@ export default function AttendancePage() {
     <>
       <PageHeader
         title='Attendance'
-        subtitle={isFaculty ? 'Take attendance only for classes assigned in your routing.' : 'Mark daily attendance by class and subject.'}
+        subtitle={isFaculty ? 'Take attendance only for classes assigned in your routing.' : 'Track your attendance subject by subject.'}
       />
 
       {isFaculty && (
@@ -276,47 +385,58 @@ export default function AttendancePage() {
         </Card>
       )}
 
-      <Card style={{ marginBottom: 16 }}>
-        <div className='g2'>
-          {!isFaculty && (
-            <Input
-              label='Class'
-              name='classId'
-              type='select'
-              value={classId}
-              onChange={(_, value) => setClassId(value)}
-              options={classes.map((classDoc) => ({ value: toId(classDoc), label: classDoc.name }))}
+      {isFaculty ? (
+        <Card style={{ marginBottom: 16 }}>
+          {selectedLecture?.isMarked && (
+            <Alert
+              type='info'
+              message='Attendance is already marked for this assigned class box on the current day.'
             />
           )}
-          {!isFaculty && (
-            <Input
-              label='Subject'
-              name='subjectId'
-              type='select'
-              value={subjectId}
-              onChange={(_, value) => setSubjectId(value)}
-              options={subjectOptions}
+        </Card>
+      ) : (
+        <Card style={{ marginBottom: 16 }}>
+          <CardHeader title='Subject-wise Attendance' />
+          {studentAttendanceCards.length === 0 ? (
+            <Empty
+              title='No attendance records yet'
+              subtitle='Your subject attendance cards will appear here once attendance is marked.'
+              icon='AT'
             />
+          ) : (
+            <div className={styles.subjectGrid}>
+              {studentAttendanceCards.map((subject) => (
+                <button
+                  key={subject.id}
+                  type='button'
+                  className={styles.subjectCard}
+                  onClick={() => openSubjectCalendar(subject)}
+                >
+                  <div className={styles.subjectCardTop}>
+                    <div>
+                      <div className={styles.subjectName}>{subject.name}</div>
+                      <div className={styles.subjectCode}>Code: {subject.code}</div>
+                    </div>
+                    <div className={styles.subjectPercentage}>{subject.percentage}%</div>
+                  </div>
+                  <div className={styles.subjectStats}>
+                    <div className={styles.subjectStatBox}>
+                      <span className={styles.subjectStatLabel}>Total Lectures</span>
+                      <strong>{subject.totalLectures}</strong>
+                    </div>
+                    <div className={styles.subjectStatBox}>
+                      <span className={styles.subjectStatLabel}>Present Lectures</span>
+                      <strong>{subject.presentLectures}</strong>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
-        </div>
-        {!isFaculty && (
-          <Input label='Date' name='date' type='date' value={date} onChange={(_, value) => setDate(value)} />
-        )}
-        {isFaculty && selectedLecture?.isMarked && (
-          <Alert
-            type='info'
-            message='Attendance is already marked for this assigned class box on the current day.'
-          />
-        )}
-        {selectedClass && !isFaculty && (
-          <Alert
-            type='info'
-            message={`Selected class: ${selectedClass.name}${selectedClass.roomNo ? ` • Room ${selectedClass.roomNo}` : ''}`}
-          />
-        )}
-      </Card>
+        </Card>
+      )}
 
-      {classId && (!isFaculty || students.length > 0 || loading) && (
+      {isFaculty && classId && (students.length > 0 || loading) && (
         <Card>
           <CardHeader title={`Students${students.length ? ` (${students.length})` : ''}`}>
             {students.length > 0 && can('attendance', 'create') && (
@@ -348,6 +468,76 @@ export default function AttendancePage() {
             })
           )}
         </Card>
+      )}
+
+      {selectedStudentSubject && (
+        <Modal
+          title={`${selectedStudentSubject.name} Attendance`}
+          onClose={closeSubjectCalendar}
+          maxWidth={920}
+        >
+          <div className={styles.calendarHeader}>
+            <div>
+              <div className={styles.calendarSubTitle}>Subject Code: {selectedStudentSubject.code}</div>
+              <div className={styles.calendarSummary}>
+                Total {selectedStudentSubject.totalLectures} | Present {selectedStudentSubject.presentLectures} | {selectedStudentSubject.percentage}%
+              </div>
+            </div>
+            <div className={styles.calendarControls}>
+              <Button variant='secondary' size='sm' onClick={() => changeCalendarMonth(-1)}>Prev</Button>
+              <span className={styles.calendarMonthLabel}>{getMonthLabel(calendarMonth)}</span>
+              <Button variant='secondary' size='sm' onClick={() => changeCalendarMonth(1)}>Next</Button>
+            </div>
+          </div>
+
+          <div className={styles.calendarLegend}>
+            <span className={styles.legendItem}><span className={[styles.legendDot, styles.legendPresent].join(' ')} /> Present</span>
+            <span className={styles.legendItem}><span className={[styles.legendDot, styles.legendAbsent].join(' ')} /> Absent</span>
+          </div>
+
+          <div className={styles.calendarGrid}>
+            {WEEK_DAYS.map((day) => (
+              <div key={day} className={styles.calendarWeekday}>{day}</div>
+            ))}
+            {calendarDays.map((cell) => {
+              if (cell.empty) {
+                return <div key={cell.key} className={[styles.calendarCell, styles.calendarCellEmpty].join(' ')} />
+              }
+
+              const statusClass = cell.entry?.status === 'P'
+                ? styles.calendarPresent
+                : cell.entry?.status === 'A'
+                  ? styles.calendarAbsent
+                  : ''
+
+              return (
+                <div key={cell.key} className={[styles.calendarCell, statusClass].join(' ')}>
+                  <span className={styles.calendarDay}>{cell.day}</span>
+                  {cell.entry && (
+                    <>
+                      <span className={styles.calendarStatusIcon}>{cell.entry.status === 'P' ? '●' : '●'}</span>
+                      <span className={styles.calendarStatusText}>{cell.entry.status === 'P' ? 'Present' : 'Absent'}</span>
+                      <span className={styles.calendarLecture}>Lecture {cell.entry.lectureNo}</span>
+                      <span className={styles.calendarDateLabel}>{formatFullDate(cell.entry.date)}</span>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className={styles.attendanceTimeline}>
+            {selectedStudentSubject.attendanceEntries.map((entry) => (
+              <div key={entry.id} className={styles.timelineRow}>
+                <span className={styles.timelineDate}>{formatFullDate(entry.date)}</span>
+                <span className={entry.status === 'P' ? styles.timelinePresent : styles.timelineAbsent}>
+                  {entry.status === 'P' ? 'Present' : 'Absent'}
+                </span>
+                <span className={styles.timelineLecture}>Lecture {entry.lectureNo}</span>
+              </div>
+            ))}
+          </div>
+        </Modal>
       )}
     </>
   )

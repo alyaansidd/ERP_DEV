@@ -80,6 +80,265 @@
   margin-top: 3px;
 }
 
+.subjectGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.subjectCard {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(37,99,235,.12), transparent 38%),
+    linear-gradient(180deg, #ffffff 0%, var(--s2) 100%);
+  box-shadow: 0 10px 24px rgba(15,23,42,.06);
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.subjectCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37,99,235,.35);
+  box-shadow: 0 14px 28px rgba(15,23,42,.1);
+}
+
+.subjectCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.subjectName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tx);
+}
+
+.subjectCode {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--tx2);
+}
+
+.subjectPercentage {
+  min-width: 68px;
+  text-align: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(37,99,235,.12);
+  color: var(--ac);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.subjectStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.subjectStatBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(148,163,184,.2);
+  color: var(--tx);
+}
+
+.subjectStatLabel {
+  font-size: 12px;
+  color: var(--tx2);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.calendarSubTitle {
+  font-size: 13px;
+  color: var(--tx2);
+}
+
+.calendarSummary {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tx);
+}
+
+.calendarControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendarMonthLabel {
+  min-width: 150px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tx);
+}
+
+.calendarLegend {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--tx2);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legendPresent {
+  background: var(--ok);
+}
+
+.legendAbsent {
+  background: var(--dg);
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.calendarWeekday {
+  padding: 10px 6px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tx2);
+  text-transform: uppercase;
+}
+
+.calendarCell {
+  min-height: 120px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--bd);
+  background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(241,245,249,.95) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calendarCellEmpty {
+  min-height: 0;
+  border: none;
+  background: transparent;
+}
+
+.calendarPresent {
+  border-color: rgba(63,214,138,.35);
+  background: linear-gradient(180deg, rgba(63,214,138,.16) 0%, rgba(255,255,255,.96) 100%);
+}
+
+.calendarAbsent {
+  border-color: rgba(247,88,88,.35);
+  background: linear-gradient(180deg, rgba(247,88,88,.14) 0%, rgba(255,255,255,.96) 100%);
+}
+
+.calendarDay {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tx);
+}
+
+.calendarStatusIcon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.calendarPresent .calendarStatusIcon {
+  color: var(--ok);
+}
+
+.calendarAbsent .calendarStatusIcon {
+  color: var(--dg);
+}
+
+.calendarStatusText {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tx);
+}
+
+.calendarLecture,
+.calendarDateLabel {
+  font-size: 11px;
+  color: var(--tx2);
+}
+
+.attendanceTimeline {
+  margin-top: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: 1.3fr .8fr .8fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--bd);
+  background: rgba(248,250,252,.9);
+}
+
+.timelineDate,
+.timelineLecture {
+  font-size: 13px;
+  color: var(--tx);
+}
+
+.timelinePresent,
+.timelineAbsent {
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.timelinePresent {
+  color: #0f5132;
+  background: rgba(63,214,138,.18);
+}
+
+.timelineAbsent {
+  color: #842029;
+  background: rgba(247,88,88,.18);
+}
+
 .row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 0; border-bottom: 1px solid var(--bd);
@@ -104,6 +363,46 @@
 
 @media (max-width: 768px) {
   .assignmentGrid {
+    grid-template-columns: 1fr;
+  }
+  .subjectGrid {
+    grid-template-columns: 1fr;
+  }
+  .subjectCardTop,
+  .subjectStats {
+    grid-template-columns: 1fr;
+  }
+  .subjectCardTop {
+    display: grid;
+  }
+  .subjectPercentage {
+    width: 100%;
+  }
+  .calendarHeader,
+  .calendarControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .calendarMonthLabel {
+    min-width: 0;
+  }
+  .calendarGrid {
+    gap: 6px;
+  }
+  .calendarWeekday {
+    font-size: 11px;
+    padding: 8px 2px;
+  }
+  .calendarCell {
+    min-height: 92px;
+    padding: 8px;
+  }
+  .calendarStatusText,
+  .calendarLecture,
+  .calendarDateLabel {
+    font-size: 10px;
+  }
+  .timelineRow {
     grid-template-columns: 1fr;
   }
   .row {
