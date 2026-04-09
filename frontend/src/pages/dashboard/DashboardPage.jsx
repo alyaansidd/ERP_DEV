@@ -70,14 +70,7 @@ const getArray = (payload) => {
   return firstArray || []
 }
 
-const formatDate = (value) => {
-  if (!value) return 'N/A'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString()
-}
-
 function StudentDashboard({ dashboard, quickLinks }) {
-  const attendanceRows = dashboard?.attendance || []
   const summary = dashboard?.attendanceSummary || { totalClasses: 0, presentClasses: 0, absentClasses: 0, percentage: 0 }
 
   return (
@@ -90,36 +83,6 @@ function StudentDashboard({ dashboard, quickLinks }) {
           <div className={styles.summaryCard}><strong>{summary.absentClasses || 0}</strong><span>Absent</span></div>
           <div className={styles.summaryCard}><strong>{summary.percentage || 0}%</strong><span>Percentage</span></div>
         </div>
-        {attendanceRows.length === 0 ? (
-          <Empty title='No attendance records' subtitle='Attendance will appear here once faculty marks it.' />
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Lecture</th>
-                  <th>Subject</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceRows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{formatDate(row.date)}</td>
-                    <td>{row.lectureNo}</td>
-                    <td>{row.subjectName} <span className={styles.inlineMuted}>({row.subjectCode})</span></td>
-                    <td>
-                      <span className={row.status === 'P' ? styles.statusPresent : styles.statusAbsent}>
-                        {row.status === 'P' ? 'Present' : 'Absent'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </Card>
 
       <div className={styles.bottom}>
