@@ -39,11 +39,25 @@ export default function LoginPage() {
 
         <Alert type='error' message={error} />
 
-        <form onSubmit={handleSubmit}>
-          <Input label='Email Address' name='email' type='email' value={form.email}
-            onChange={set} placeholder='you@institution.edu' required />
-          <Input label='Password' name='password' type='password' value={form.password}
-            onChange={set} placeholder='••••••••' required />
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <Input
+            label='Email Address'
+            name='email'
+            type='email'
+            value={form.email}
+            onChange={set}
+            placeholder='you@institution.edu'
+            required
+          />
+          <Input
+            label='Password'
+            name='password'
+            type='password'
+            value={form.password}
+            onChange={set}
+            placeholder='********'
+            required
+          />
 
           <div className={styles.forgotRow}>
             <Link to='/forgot-password' className={styles.forgot}>Forgot password?</Link>
@@ -51,22 +65,6 @@ export default function LoginPage() {
 
           <Button type='submit' fullWidth loading={loading}>Sign In</Button>
         </form>
-
-        <div className={styles.hint}>
-          <div className={styles.hintTitle}>🧪 Test Credentials (no backend needed)</div>
-          <table className={styles.credTable}>
-            <thead>
-              <tr><th>Role</th><th>Email</th><th>Password</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Admin</td><td>test.admin01@example.com</td><td>pass@123</td></tr>
-              <tr><td>HOD</td><td>test.faculty@example.com</td><td>pass123</td></tr>
-              <tr><td>Faculty</td><td>test.faculty02@example.com</td><td>pass123</td></tr>
-              <tr><td>Student</td><td>test.student.example01@gmail.com</td><td>pass123</td></tr>
-            </tbody>
-          </table>
-          <div className={styles.hintSub}>Replace with your real backend at <code>http://localhost:5000</code></div>
-        </div>
       </div>
     </div>
   )

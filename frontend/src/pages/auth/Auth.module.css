@@ -9,12 +9,12 @@
 }
 
 .card {
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 400px;
   background: var(--sf);
   border: 1px solid var(--bd);
   border-radius: var(--r2);
-  padding: 40px;
-  box-shadow: 0 32px 80px rgba(0,0,0,.7);
+  padding: 36px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55);
   animation: fadeUp .35s ease;
 }
 
@@ -28,13 +28,16 @@
   background-clip: text;
   margin-bottom: 2px;
 }
+
 .logoSub {
   font-size: 10px; color: var(--tx3);
   letter-spacing: .5px; text-transform: uppercase;
   margin-bottom: 28px;
 }
+
 .heading { font-family: var(--fd); font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .sub { color: var(--tx2); font-size: 13px; margin-bottom: 24px; }
+.form { margin-top: 4px; }
 
 .forgotRow { text-align: right; margin-bottom: 16px; margin-top: -8px; }
 .forgot { font-size: 12px; color: var(--ac); text-decoration: none; }
@@ -42,52 +45,5 @@
 
 .back { display: block; text-align: center; margin-top: 16px; font-size: 12px; color: var(--ac); text-decoration: none; }
 .back:hover { text-decoration: underline; }
-
-.hint {
-  margin-top: 20px;
-  padding: 16px;
-  background: var(--s2);
-  border-radius: var(--r);
-  font-size: 12px;
-  color: var(--tx2);
-  line-height: 1.6;
-  border: 1px solid var(--bd);
-}
-.hintTitle {
-  font-weight: 700;
-  color: var(--tx);
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-.hintSub {
-  margin-top: 10px;
-  color: var(--tx3);
-  font-size: 11px;
-}
-.hintSub code { color: var(--ac); }
-
-.credTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.credTable th {
-  text-align: left;
-  padding: 4px 8px;
-  color: var(--tx3);
-  font-weight: 600;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-  font-size: 10px;
-  border-bottom: 1px solid var(--bd);
-}
-.credTable td {
-  padding: 5px 8px;
-  color: var(--tx2);
-  border-bottom: 1px solid var(--bd);
-}
-.credTable tr:last-child td { border-bottom: none; }
-.credTable td:first-child { color: var(--ac); font-weight: 600; }
-.credTable td:last-child { color: var(--ok); font-family: monospace; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
